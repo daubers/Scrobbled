@@ -25,6 +25,30 @@ class Config:
     # server is started by gunicorn.conf.py instead, so this stays off there.
     START_METRICS_SERVER = os.environ.get("START_METRICS_SERVER", "0") == "1"
 
+    # OpenAPI document and docs (flask-smorest)
+    API_TITLE = "Scrobbler API"
+    API_VERSION = "v1"
+    OPENAPI_VERSION = "3.1.0"
+    OPENAPI_URL_PREFIX = "/api"
+    OPENAPI_JSON_PATH = "openapi.json"
+    OPENAPI_DOCS_ENABLED = os.environ.get("OPENAPI_DOCS_ENABLED", "1") == "1"
+    OPENAPI_SWAGGER_UI_PATH = "docs" if OPENAPI_DOCS_ENABLED else None
+    OPENAPI_SWAGGER_UI_URL = os.environ.get(
+        "OPENAPI_SWAGGER_UI_URL", "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/"
+    )
+    OPENAPI_REDOC_PATH = "redoc" if OPENAPI_DOCS_ENABLED else None
+    OPENAPI_REDOC_URL = os.environ.get(
+        "OPENAPI_REDOC_URL", "https://cdn.jsdelivr.net/npm/redoc@2/bundles/redoc.standalone.js"
+    )
+    API_SPEC_OPTIONS = {
+        "info": {
+            "description": (
+                "Two APIs: `/2.0/` is Last.fm (Audioscrobbler 2.0) compatible, for players "
+                "and scrobblers; `/api/v1/` is the JSON API used by the web UI."
+            )
+        },
+    }
+
     # Last.fm behaviour
     AUTH_TOKEN_TTL_SECONDS = 60 * 60
     UI_TOKEN_TTL_DAYS = 30

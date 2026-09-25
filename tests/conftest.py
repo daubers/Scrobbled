@@ -26,6 +26,7 @@ def _clean_tables(app):
     tables = ", ".join(t.name for t in db.metadata.sorted_tables)
     db.session.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
     db.session.commit()
+    db.session.remove()  # drop identities that pointed at truncated rows
 
 
 @pytest.fixture
@@ -128,3 +129,16 @@ def signed(params: dict, secret: str) -> dict:
 
 def days_ago(days: float) -> int:
     return int((datetime.now(UTC) - timedelta(days=days)).timestamp())
+
+
+@pytest.fixture
+def ui_token(user):
+    from scrobbler.services.accounts import issue_ui_token
+
+    return issue_ui_token(user)
+
+
+@pytest.fixture
+def auth(ui_token):
+    """Authorization headers for the default user."""
+    return {"Authorization": f"Bearer {ui_token}"}
