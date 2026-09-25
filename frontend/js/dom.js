@@ -7,6 +7,8 @@ export function h(tag, attrs = {}, ...children) {
     if (value === false || value === null || value === undefined) continue;
     if (key.startsWith("on") && typeof value === "function") el.addEventListener(key.slice(2), value);
     else if (key === "class") el.className = value;
+    // CSSOM, not a style attribute, so it's allowed by the UI's CSP (style-src 'self').
+    else if (key === "style") el.style.cssText = value;
     else if (key === "dataset") Object.assign(el.dataset, value);
     else el.setAttribute(key, value === true ? "" : String(value));
   }

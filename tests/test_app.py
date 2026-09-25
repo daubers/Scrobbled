@@ -31,3 +31,7 @@ def test_build_info_is_exported(metric_delta):
 
     samples = [s for m in REGISTRY.collect() if m.name == "scrobbler_build_info" for s in m.samples]
     assert samples and samples[0].labels["version"] == __version__
+
+
+def test_healthz(client):
+    assert client.get("/healthz").get_json() == {"status": "ok"}

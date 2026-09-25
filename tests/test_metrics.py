@@ -54,7 +54,21 @@ def test_pool_gauges_are_exported(client, user):
         if m.name == "scrobbler_db_pool_connections"
         for s in m.samples
     }
-    assert {"checked_out", "idle", "overflow", "size"} <= states
+    assert {"checked_out", "overflow", "size"} <= states
+
+
+def test_checked_out_connections_return_to_zero(client, user):
+    from prometheus_client import REGISTRY
+
+    from scrobbler.extensions import db
+
+    db.session.remove()  # return the test session's connection
+    before = REGISTRY.get_sample_value("scrobbler_db_pool_connections", {"state": "checked_out"})
+    client.post("/api/v1/auth/login", json={"username": "alice", "password": "hunter22"})
+    # The request shares the test's app context, so end its session as teardown would.
+    db.session.remove()
+    after = REGISTRY.get_sample_value("scrobbler_db_pool_connections", {"state": "checked_out"})
+    assert after == before
 
 
 def test_database_stats_collector(app, user, make_user):

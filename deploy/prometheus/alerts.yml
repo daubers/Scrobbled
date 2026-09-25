@@ -1,0 +1,65 @@
+groups:
+  - name: scrobbler
+    rules:
+      - alert: ScrobblerDown
+        expr: up{job="scrobbler-api"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: Scrobbler API metrics endpoint is down
+          description: Prometheus hasn't been able to scrape {{ $labels.instance }} for 2 minutes.
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(scrobbler_http_requests_total{status=~"5.."}[5m]))
+            / sum(rate(scrobbler_http_requests_total[5m])) > 0.05
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: More than 5% of API requests are failing
+          description: 5xx ratio is {{ $value | humanizePercentage }}.
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(scrobbler_http_request_duration_seconds_bucket[5m]))) > 1
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: API p95 latency is above 1s
+          description: p95 latency is {{ $value | humanizeDuration }}.
+
+      - alert: AuthFailureSpike
+        expr: sum(rate(scrobbler_auth_failures_total[5m])) > 10
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: Unusually many authentication failures
+          description: "{{ $value | humanize }} failures/s: check for a misconfigured client or credential stuffing."
+
+      - alert: ScrobbleIgnoreRateHigh
+        expr: |
+          sum(rate(scrobbler_scrobbles_total{result="ignored"}[15m]))
+            / sum(rate(scrobbler_scrobbles_total[15m])) > 0.2
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: More than 20% of scrobbles are being ignored
+          description: A client may be sending bad timestamps or empty metadata.
+
+      - alert: DBPoolExhausted
+        expr: |
+          sum(scrobbler_db_pool_connections{state="checked_out"})
+            >= sum(scrobbler_db_pool_connections{state="size"})
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: Every pooled database connection is in use
+          description: Workers are running on overflow connections; requests may queue.
+
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: Postgres is unreachable from postgres-exporter

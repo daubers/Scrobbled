@@ -992,6 +992,40 @@
         ]
       }
     },
+    "/healthz": {
+      "get": {
+        "responses": {
+          "503": {
+            "description": "The database is unreachable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Health check",
+        "description": "Returns 200 when the API can reach its database.",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
     "/2.0/": {
       "get": {
         "tags": [
@@ -1496,6 +1530,10 @@
       "description": "Your listening history and statistics"
     },
     {
+      "name": "Health",
+      "description": "Liveness for load balancers and containers"
+    },
+    {
       "name": "Last.fm",
       "description": "Last.fm-compatible API for players and scrobblers"
     }
@@ -1932,6 +1970,16 @@
               "null"
             ],
             "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
           }
         },
         "additionalProperties": false

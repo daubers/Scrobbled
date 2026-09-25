@@ -34,15 +34,26 @@ def instrument(engine: Engine) -> None:
             stack.pop()
 
     pool = engine.pool
+    if not hasattr(pool, "size"):  # e.g. NullPool in tools: nothing worth reporting
+        return
+    checked_out = metrics.db_pool_connections.labels(state="checked_out")
+    overflow = metrics.db_pool_connections.labels(state="overflow")
+    metrics.db_pool_connections.labels(state="size").set(pool.size())
 
-    def _report_pool(*_args):
-        # QueuePool exposes these; other pools (e.g. NullPool in tools) don't.
-        if not hasattr(pool, "checkedout"):
-            return
-        metrics.db_pool_connections.labels(state="checked_out").set(pool.checkedout())
-        metrics.db_pool_connections.labels(state="idle").set(pool.checkedin())
-        metrics.db_pool_connections.labels(state="overflow").set(max(0, pool.overflow()))
-        metrics.db_pool_connections.labels(state="size").set(pool.size())
+    # Pool events fire before the pool updates its own counters, so reading
+    # pool.checkedout() inside them is off by one; count the events instead.
+    @event.listens_for(pool, "checkout")
+    def _checkout(*_args):
+        checked_out.inc()
 
-    for name in ("connect", "checkout", "checkin", "close"):
-        event.listen(pool, name, _report_pool)
+    @event.listens_for(pool, "checkin")
+    def _checkin(*_args):
+        checked_out.dec()
+
+    @event.listens_for(pool, "connect")
+    def _connect(*_args):
+        overflow.set(max(0, pool.overflow()))
+
+    @event.listens_for(pool, "close")
+    def _close(*_args):
+        overflow.set(max(0, pool.overflow()))

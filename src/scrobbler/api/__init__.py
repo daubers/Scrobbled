@@ -43,13 +43,14 @@ def init_app(app: Flask) -> None:
         },
     )
 
-    from scrobbler.api import apps, auth, sessions, stats, tokens
+    from scrobbler.api import apps, auth, health, sessions, stats, tokens
 
     api.register_blueprint(auth.blp, url_prefix="/api/v1/auth")
     api.register_blueprint(apps.blp, url_prefix="/api/v1/apps")
     api.register_blueprint(sessions.blp, url_prefix="/api/v1/sessions")
     api.register_blueprint(tokens.blp, url_prefix="/api/v1/tokens")
     api.register_blueprint(stats.blp, url_prefix="/api/v1/me")
+    api.register_blueprint(health.blp)
 
     from scrobbler.openapi import lastfm
 

@@ -40,6 +40,7 @@ dev = [
     "openapi-spec-validator>=0.9.0",
     "pylast>=7.1.0",
     "pytest>=9.1.1",
+    "pyyaml>=6.0.3",
     "ruff>=0.16.9",
 ]
 

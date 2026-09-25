@@ -8,7 +8,7 @@ from openapi_spec_validator import validate
 from scrobbler.lastfm.registry import METHODS
 
 COMMITTED_SPEC = Path(__file__).resolve().parents[1] / "docs" / "openapi.json"
-DOCUMENTED_PREFIXES = ("/api/v1/", "/2.0/", "/api/auth/")
+DOCUMENTED_PREFIXES = ("/api/v1/", "/2.0/", "/api/auth/", "/healthz")
 HTTP_VERBS = {"get", "put", "post", "delete", "patch", "head", "options"}
 
 

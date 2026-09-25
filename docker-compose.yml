@@ -1,9 +1,14 @@
+# Core services:        docker compose up
+# With monitoring:      docker compose --profile monitoring up
+# Published images:     SCROBBLER_IMAGE_TAG=main docker compose up --no-build
+name: scrobbler
+
 services:
   db:
     image: postgres:16
     environment:
       POSTGRES_USER: scrobbler
-      POSTGRES_PASSWORD: scrobbler
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-scrobbler}
       POSTGRES_DB: scrobbler
     ports:
       - "${DB_PORT:-5432}:5432"
@@ -16,5 +21,76 @@ services:
       timeout: 3s
       retries: 10
 
+  api:
+    image: ${SCROBBLER_REGISTRY:-pkgs.daubney.dev/scrobbler}/scrobbler-api:${SCROBBLER_IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://scrobbler:${POSTGRES_PASSWORD:-scrobbler}@db:5432/scrobbler
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      CORS_ORIGINS: ${UI_BASE_URL:-http://localhost:8080}
+      UI_BASE_URL: ${UI_BASE_URL:-http://localhost:8080}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+      FORWARDED_ALLOW_IPS: "*"
+    ports:
+      - "${API_PORT:-5050}:8000"
+    expose:
+      - "9100"  # metrics: internal network only
+    depends_on:
+      db:
+        condition: service_healthy
+
+  ui:
+    image: ${SCROBBLER_REGISTRY:-pkgs.daubney.dev/scrobbler}/scrobbler-ui:${SCROBBLER_IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: docker/ui.Dockerfile
+    environment:
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:5050}
+    ports:
+      - "${UI_PORT:-8080}:80"
+
+  prometheus:
+    profiles: [monitoring]
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ./deploy/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+
+  postgres-exporter:
+    profiles: [monitoring]
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.17.1
+    environment:
+      DATA_SOURCE_URI: db:5432/scrobbler?sslmode=disable
+      DATA_SOURCE_USER: scrobbler
+      DATA_SOURCE_PASS: ${POSTGRES_PASSWORD:-scrobbler}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  grafana:
+    profiles: [monitoring]
+    image: grafana/grafana:12.1.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/api-overview.json
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      - prometheus
+
 volumes:
   db-data:
+  prometheus-data:
+  grafana-data:

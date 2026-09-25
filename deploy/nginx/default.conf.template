@@ -1,0 +1,23 @@
+# Rendered by the nginx image's envsubst step (API_BASE_URL comes from the environment).
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+    server_tokens off;
+
+    # add_header isn't inherited by locations that set their own, so the security
+    # headers live in the location that serves pages.
+    location / {
+        try_files $uri $uri/ =404;
+        # Files aren't fingerprinted, so always revalidate.
+        add_header Cache-Control "no-cache";
+        add_header Content-Security-Policy "default-src 'self'; connect-src 'self' ${API_BASE_URL}; img-src 'self' data:; style-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy same-origin always;
+    }
+
+    location /fonts/ {
+        add_header Cache-Control "public, max-age=2592000, immutable";
+    }
+}
