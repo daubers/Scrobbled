@@ -51,17 +51,38 @@ jobs:
           uv run flask --app scrobbler db check
       - run: uv run pytest
 
+  validate-monitoring:
+    runs-on: ubuntu-latest
+    env:
+      PROMETHEUS_VERSION: "3.5.0"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install promtool
+        run: |
+          case "$(uname -m)" in x86_64) arch=amd64 ;; aarch64|arm64) arch=arm64 ;; *) arch=$(uname -m) ;; esac
+          name="prometheus-${PROMETHEUS_VERSION}.linux-${arch}"
+          curl -fsSL "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/${name}.tar.gz" \
+            | tar -xz -C /tmp "${name}/promtool"
+          sudo mv "/tmp/${name}/promtool" /usr/local/bin/ 2>/dev/null || mv "/tmp/${name}/promtool" /usr/local/bin/
+      - name: Check Prometheus config and alert rules
+        # The config references alerts.yml relative to itself; targets are compose hostnames.
+        run: |
+          promtool check config deploy/prometheus/prometheus.yml
+          promtool check rules deploy/prometheus/alerts.yml
+      - name: Dashboards are valid JSON
+        run: for f in deploy/grafana/dashboards/*.json; do python3 -m json.tool "$f" > /dev/null; done
+
   notify:
-    needs: [lint, test]
+    needs: [lint, test, validate-monitoring]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: ./.gitea/actions/notify
         with:
-          status: ${{ (needs.lint.result == 'success' && needs.test.result == 'success') && 'success' || ((needs.lint.result == 'cancelled' || needs.test.result == 'cancelled') && 'cancelled' || 'failure') }}
+          status: ${{ (needs.lint.result == 'success' && needs.test.result == 'success' && needs.validate-monitoring.result == 'success') && 'success' || ((needs.lint.result == 'cancelled' || needs.test.result == 'cancelled' || needs.validate-monitoring.result == 'cancelled') && 'cancelled' || 'failure') }}
           title: CI ${{ github.ref_name }}
-          message: "lint: ${{ needs.lint.result }} · test: ${{ needs.test.result }}"
+          message: "lint: ${{ needs.lint.result }} · test: ${{ needs.test.result }} · monitoring: ${{ needs.validate-monitoring.result }}"
           url: ${{ vars.NTFY_URL }}
           topic: ${{ vars.NTFY_TOPIC }}
           user: ${{ secrets.NTFY_USER }}
