@@ -1,4 +1,10 @@
 # Rendered by the nginx image's envsubst step (API_BASE_URL comes from the environment).
+
+# Behind a TLS proxy, keep its scheme; otherwise use ours.
+map $http_x_forwarded_proto $scrobbler_forwarded_proto {
+    default $http_x_forwarded_proto;
+    ""      $scheme;
+}
 server {
     listen 80;
     server_name _;
@@ -16,6 +22,9 @@ server {
         add_header X-Content-Type-Options nosniff always;
         add_header Referrer-Policy same-origin always;
     }
+
+    # Fediverse paths forwarded to the API (written at start-up; empty if API_INTERNAL_URL is unset).
+    include /etc/nginx/scrobbler/federation.conf;
 
     location /fonts/ {
         add_header Cache-Control "public, max-age=2592000, immutable";

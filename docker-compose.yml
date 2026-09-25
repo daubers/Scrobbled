@@ -34,6 +34,10 @@ services:
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
       FORWARDED_ALLOW_IPS: "*"
       LASTFM_API_KEY: ${LASTFM_API_KEY:-}
+      FEDERATION_ENABLED: ${FEDERATION_ENABLED:-0}
+      FEDERATION_DOMAIN: ${FEDERATION_DOMAIN:-}
+      FEDERATION_BASE_URL: ${FEDERATION_BASE_URL:-}
+      FEDERATION_KEY_SECRET: ${FEDERATION_KEY_SECRET:-}
     ports:
       - "${API_PORT:-5050}:8000"
     expose:
@@ -53,6 +57,10 @@ services:
       DATABASE_URL: postgresql+psycopg://scrobbler:${POSTGRES_PASSWORD:-scrobbler}@db:5432/scrobbler
       SECRET_KEY: ${SECRET_KEY:-change-me}
       LASTFM_API_KEY: ${LASTFM_API_KEY:-}
+      FEDERATION_ENABLED: ${FEDERATION_ENABLED:-0}
+      FEDERATION_DOMAIN: ${FEDERATION_DOMAIN:-}
+      FEDERATION_BASE_URL: ${FEDERATION_BASE_URL:-}
+      FEDERATION_KEY_SECRET: ${FEDERATION_KEY_SECRET:-}
       RUN_MIGRATIONS: "0"  # the api service applies them
     expose:
       - "9101"  # metrics: internal network only
@@ -69,6 +77,8 @@ services:
       dockerfile: docker/ui.Dockerfile
     environment:
       API_BASE_URL: ${API_BASE_URL:-http://localhost:5050}
+      # Forward the fediverse paths (/.well-known/webfinger, /users/, /inbox, ...) to the API.
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:8000}
     ports:
       - "${UI_PORT:-8080}:80"
 
