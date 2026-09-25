@@ -1,5 +1,14 @@
 # ActivityPub phase 0: groundwork
 
+**Status: done** on `feature/activitypub`:
+
+| Commit | Steps |
+|---|---|
+| `59ff1bd` | events |
+| `098eab0` | worker |
+| `c79c42e` | module and migrations |
+| `eb5802f` | boundary tests |
+
 This implements phase 0 of [activitypub.md](activitypub.md): the seams that federation will plug into. There's **no user-visible change**. All existing tests must keep passing, and the app behaves exactly as before with federation off, which is the default.
 
 ## 1. Domain events: `scrobbler/events.py`
