@@ -32,10 +32,15 @@ def create_app(config_object=None):
         max_age=600,
     )
 
+    from scrobbler.metrics import db as db_metrics
+
+    with app.app_context():
+        db_metrics.instrument(db.engine)
+
     if app.config["START_METRICS_SERVER"]:
         from scrobbler.metrics.server import start_metrics_server
 
-        start_metrics_server(app.config["METRICS_PORT"])
+        start_metrics_server(app.config["METRICS_PORT"], app.config["SQLALCHEMY_DATABASE_URI"])
 
     return app
 

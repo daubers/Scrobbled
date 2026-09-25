@@ -118,3 +118,10 @@ build_info = Gauge(
     multiprocess_mode="max",
 )
 build_info.labels(version=__version__, python_version=platform.python_version()).set(1)
+
+# Gauges computed from the database by metrics.collectors.DatabaseStatsCollector.
+COLLECTED = {
+    "users": "scrobbler_users",
+    "active_users": "scrobbler_active_users",
+    "now_playing_active": "scrobbler_now_playing_active",
+}
