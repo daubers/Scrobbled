@@ -166,3 +166,7 @@ The workflow needs these repository secrets and variables:
 - **Variables**: `PKGS_HOST`, `PKGS_DOCKER_FEED`, `PKGS_PYPI_FEED`, `PKGS_ASSET_FEED`, `NTFY_URL`, `NTFY_TOPIC`
 
 To release, tag `vX.Y.Z` on `main` and push the tag. The tag sets the package and image version.
+
+## Licence
+
+BSD 3-Clause; see [LICENSE](LICENSE). The fonts vendored in `frontend/fonts/` are under the SIL Open Font License 1.1.

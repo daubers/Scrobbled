@@ -1,5 +1,6 @@
 # Scrobbler web UI: static files served by nginx.
 FROM nginx:1.29-alpine
+LABEL org.opencontainers.image.licenses="BSD-3-Clause"
 ENV API_BASE_URL=http://localhost:5050
 COPY deploy/nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY docker/ui-config.sh /docker-entrypoint.d/40-scrobbler-config.sh
