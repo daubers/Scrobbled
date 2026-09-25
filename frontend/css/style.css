@@ -945,3 +945,11 @@ input {
 .save-row {
   align-items: center;
 }
+
+.follower-summary {
+  margin-top: 0.25rem;
+}
+
+.confirm-off .button-row {
+  margin-top: 0.75rem;
+}

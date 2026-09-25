@@ -24,7 +24,7 @@
         <p class="display-status">Your fediverse handle</p>
         <p class="approve-app handle" id="handle"></p>
         <p class="muted">People can follow you by searching for this in their app. It can't be changed once people follow you.</p>
-        <p class="notice">Following arrives in a coming update. Until then people can find your profile, and follows wait as requests.</p>
+        <p class="follower-summary" id="follower-summary"></p>
       </div>
 
       <fieldset class="choices">
@@ -74,6 +74,7 @@
         <p class="muted" id="profile-link"></p>
       </fieldset>
 
+      <div class="notice notice-error confirm-off" id="confirm-off" role="alertdialog" aria-live="assertive" hidden></div>
       <div class="button-row save-row">
         <button class="button" type="submit">Save sharing settings</button>
         <span class="muted" id="save-status" role="status"></span>

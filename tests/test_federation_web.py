@@ -60,7 +60,7 @@ def test_actor_document(fed_client, sharing_user):
     assert doc["summary"] == "<p>Listening.</p>"
     assert doc["publicKey"]["id"] == f"{BASE}/users/alice#main-key"
     assert doc["publicKey"]["publicKeyPem"].startswith("-----BEGIN PUBLIC KEY-----")
-    assert doc["manuallyApprovesFollowers"] is True  # follows are requests until phase 2
+    assert doc["manuallyApprovesFollowers"] is False  # the user's setting (off by default)
     assert (doc["discoverable"], doc["indexable"]) == (False, False)
     assert doc["url"] == "http://localhost:8080/profile.html?u=alice"
 

@@ -1,5 +1,5 @@
 import { api, describeError } from "./api.js";
-import { errorBox, h, replace } from "./dom.js";
+import { errorBox, h, num, replace } from "./dom.js";
 import { signedInPage } from "./layout.js";
 
 const form = document.getElementById("sharing");
@@ -40,6 +40,10 @@ function fill(values) {
     }
   }
   document.getElementById("handle").textContent = values.handle;
+  const summary = document.getElementById("follower-summary");
+  const parts = [`${num(values.followers)} ${values.followers === 1 ? "follower" : "followers"}`];
+  if (values.pending_followers) parts.push(`${num(values.pending_followers)} waiting for approval`);
+  replace(summary, parts.join(", "), ". ", h("a", { href: "followers.html" }, "See followers"));
   replace(
     document.getElementById("profile-link"),
     "Your public profile page: ",
@@ -52,8 +56,50 @@ function showHandle(on) {
   handlePanel.hidden = !on;
 }
 
+// Turning sharing off removes every follower, so it's confirmed first.
+function confirmTurningOff(followerCount) {
+  return new Promise((resolve) => {
+    const box = document.getElementById("confirm-off");
+    const done = (answer) => {
+      box.hidden = true;
+      resolve(answer);
+    };
+    replace(
+      box,
+      h(
+        "p",
+        {},
+        `Turning sharing off removes your ${num(followerCount)} ${followerCount === 1 ? "follower" : "followers"}. `,
+        "Each is told, and they'd have to follow you again if you turn it back on.",
+      ),
+      h(
+        "div",
+        { class: "button-row" },
+        h("button", { type: "button", class: "button button-danger", onclick: () => done(true) }, "Turn off sharing"),
+        h(
+          "button",
+          {
+            type: "button",
+            class: "button button-quiet",
+            onclick: () => {
+              form.elements.enabled.checked = true;
+              showHandle(true);
+              done(false);
+            },
+          },
+          "Keep sharing",
+        ),
+      ),
+    );
+    box.hidden = false;
+    box.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+}
+
 async function save(event) {
   event.preventDefault();
+  const turningOff = settings.enabled && !form.elements.enabled.checked;
+  if (turningOff && settings.followers > 0 && !(await confirmTurningOff(settings.followers))) return;
   const button = form.querySelector("button[type=submit]");
   const changes = {
     enabled: form.elements.enabled.checked,
@@ -70,8 +116,11 @@ async function save(event) {
   replace(messages);
   try {
     const saved = await api("/federation/settings", { method: "PATCH", body: changes });
+    settings = saved;
     fill(saved);
-    status.textContent = saved.enabled ? `Saved. You're sharing as ${saved.handle}.` : "Saved. Sharing is off.";
+    status.textContent = saved.enabled
+      ? `Saved. You're sharing as ${saved.handle}.`
+      : "Saved. Sharing is off, and your followers have been told.";
   } catch (error) {
     status.textContent = "";
     replace(messages, errorBox(describeError(error)));

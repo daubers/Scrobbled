@@ -1942,7 +1942,7 @@
           }
         },
         "summary": "Change your sharing settings",
-        "description": "Turning sharing on makes you findable as your handle. Your handle can't change once\npeople follow you. Visibility changes apply to new posts only.",
+        "description": "Turning sharing on makes you findable as your handle. Your handle can't change once\npeople follow you. Visibility changes apply to new posts only. Turning sharing off\nremoves all your followers (each is told).",
         "tags": [
           "Federation"
         ],
@@ -1994,6 +1994,391 @@
           "schema": {
             "type": "string",
             "minLength": 1
+          }
+        }
+      ]
+    },
+    "/api/v1/federation/followers": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "state",
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "enum": [
+                "pending",
+                "accepted",
+                null
+              ]
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_CONTENT"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Follower"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Your followers and follow requests",
+        "description": "Newest first. Filter with `state=pending` (requests) or `state=accepted`.",
+        "tags": [
+          "Federation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/federation/followers/{follower_id}/approve": {
+      "post": {
+        "responses": {
+          "409": {
+            "description": "Not a pending request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such follower",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Follower"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Approve a follow request",
+        "tags": [
+          "Federation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "follower_id",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      ]
+    },
+    "/api/v1/federation/followers/{follower_id}/decline": {
+      "post": {
+        "responses": {
+          "404": {
+            "description": "No such follower",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Decline a follow request",
+        "tags": [
+          "Federation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "follower_id",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      ]
+    },
+    "/api/v1/federation/followers/{follower_id}/remove": {
+      "post": {
+        "responses": {
+          "404": {
+            "description": "No such follower",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Remove a follower",
+        "description": "They stop receiving your posts. They can follow you again; block them to prevent it.",
+        "tags": [
+          "Federation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "follower_id",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      ]
+    },
+    "/api/v1/federation/followers/{follower_id}/block": {
+      "post": {
+        "responses": {
+          "404": {
+            "description": "No such follower",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Block a follower",
+        "description": "Removes them and refuses their future follows.",
+        "tags": [
+          "Federation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "follower_id",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      ]
+    },
+    "/api/v1/federation/blocks": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Block"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Accounts you've blocked",
+        "tags": [
+          "Federation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/federation/blocks/{block_id}": {
+      "delete": {
+        "responses": {
+          "404": {
+            "description": "No such block",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Unblock an account",
+        "description": "They can follow you again (they aren't re-added).",
+        "tags": [
+          "Federation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "block_id",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       ]
@@ -3693,7 +4078,12 @@
           "followers": {
             "type": "integer",
             "readOnly": true,
-            "description": "0 until following arrives"
+            "description": "Accepted followers"
+          },
+          "pending_followers": {
+            "type": "integer",
+            "readOnly": true,
+            "description": "Waiting for approval"
           }
         },
         "additionalProperties": false
@@ -3755,7 +4145,12 @@
           "followers": {
             "type": "integer",
             "readOnly": true,
-            "description": "0 until following arrives"
+            "description": "Accepted followers"
+          },
+          "pending_followers": {
+            "type": "integer",
+            "readOnly": true,
+            "description": "Waiting for approval"
           }
         },
         "additionalProperties": false
@@ -3781,6 +4176,69 @@
           },
           "actor_url": {
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Follower": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted"
+            ]
+          },
+          "handle": {
+            "type": "string",
+            "example": "@bob@mastodon.example"
+          },
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actor_url": {
+            "type": "string"
+          },
+          "server": {
+            "type": "string",
+            "example": "mastodon.example"
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When they followed (or asked to)"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Block": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actor_url": {
+            "type": "string"
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false

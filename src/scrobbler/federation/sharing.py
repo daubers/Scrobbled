@@ -67,3 +67,24 @@ def sharing_count() -> int:
     return db.session.scalar(
         db.select(db.func.count()).select_from(FederationSettings).filter_by(enabled=True)
     )
+
+
+def farewell_user(username: str):
+    """A user who has stopped sharing but still has messages on their way out (the
+    Rejects telling followers). Their actor stays fetchable, minimally, so other servers
+    can verify those messages. None otherwise."""
+    from scrobbler.federation.models import FederationActivity, FederationDelivery
+
+    user = accounts.find_user(username)
+    if user is None:
+        return None
+    settings = db.session.get(FederationSettings, user.id)
+    if settings is None or settings.enabled:
+        return None
+    pending = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(FederationDelivery)
+        .join(FederationActivity, FederationActivity.id == FederationDelivery.activity_id)
+        .filter(FederationActivity.user_id == user.id, FederationDelivery.status == "pending")
+    )
+    return user if pending else None

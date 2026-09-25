@@ -7,6 +7,7 @@ import json
 from flask import Blueprint, Response, current_app, redirect, request
 
 from scrobbler.extensions import db
+from scrobbler.federation import followers as follower_state
 from scrobbler.federation import inbox, keys, sharing
 from scrobbler.federation import metrics as fed_metrics
 from scrobbler.federation.models import FederationActivity
@@ -110,7 +111,23 @@ def actor(username: str):
         return redirect(_profile_page(username), code=302)
     found = sharing.shared_user(username)
     if found is None:
-        return _not_found("actor")
+        leaving = sharing.farewell_user(username)
+        if leaving is None:
+            return _not_found("actor")
+        # Stopped sharing, but Rejects are still on their way: just enough for other
+        # servers to verify them. No name, bio or other profile details.
+        _found("actor")
+        doc = vocab.person(
+            _urls(leaving.username),
+            username=leaving.username,
+            name=leaving.username,
+            summary=None,
+            public_key_pem=keys.key_for(leaving.id).public_key_pem,
+            manually_approves_followers=True,
+            discoverable=False,
+            indexable=False,
+        )
+        return _json(doc, cache=0)
     user, settings = found
     _found("actor")
     urls = _urls(user.username)
@@ -120,9 +137,7 @@ def actor(username: str):
         name=settings.display_name or user.username,
         summary=settings.bio,
         public_key_pem=keys.key_for(user.id).public_key_pem,
-        # Phase 1 can't accept follows yet: advertise approval so follows show as
-        # requests rather than failing silently.
-        manually_approves_followers=True,
+        manually_approves_followers=settings.manually_approves_followers,
         discoverable=settings.discoverable,
         indexable=settings.indexable,
         published=settings.created_at.isoformat().replace("+00:00", "Z"),
@@ -130,12 +145,12 @@ def actor(username: str):
     return _json(doc)
 
 
-def _collection(username: str, which: str, items: list | None):
+def _collection(username: str, which: str, items: list | None, total: int = 0):
     found = sharing.shared_user(username)
     if found is None:
         return _not_found("actor")
     urls = _urls(found[0].username)
-    return _json(vocab.ordered_collection(getattr(urls, which), 0, items))
+    return _json(vocab.ordered_collection(getattr(urls, which), total, items))
 
 
 @bp.get("/users/<username>/outbox")
@@ -145,7 +160,9 @@ def outbox(username: str):
 
 @bp.get("/users/<username>/followers")
 def followers(username: str):
-    return _collection(username, "followers", None)  # count only
+    found = sharing.shared_user(username)
+    total = follower_state.counts(found[0].id)["accepted"] if found else 0
+    return _collection(username, "followers", None, total)  # the count, not who
 
 
 @bp.get("/users/<username>/following")

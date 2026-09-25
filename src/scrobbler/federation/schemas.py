@@ -23,8 +23,9 @@ class SharingSettingsSchema(Schema):
     handle = fields.String(dump_only=True, metadata={"example": "@alice@scrobble.example"})
     actor_url = fields.String(dump_only=True)
     profile_url = fields.String(dump_only=True)
-    followers = fields.Integer(
-        dump_only=True, metadata={"description": "0 until following arrives"}
+    followers = fields.Integer(dump_only=True, metadata={"description": "Accepted followers"})
+    pending_followers = fields.Integer(
+        dump_only=True, metadata={"description": "Waiting for approval"}
     )
 
 
@@ -38,3 +39,25 @@ class PublicProfileSchema(Schema):
 
 class SharingSettingsUpdateSchema(SharingSettingsSchema):
     """Any subset of the editable settings (read-only fields are rejected)."""
+
+
+class FollowerSchema(Schema):
+    id = fields.Integer()
+    state = fields.String(validate=validate.OneOf(["pending", "accepted"]))
+    handle = fields.String(metadata={"example": "@bob@mastodon.example"})
+    display_name = fields.String(allow_none=True)
+    actor_url = fields.String()
+    server = fields.String(metadata={"example": "mastodon.example"})
+    since = fields.DateTime(metadata={"description": "When they followed (or asked to)"})
+
+
+class FollowerListArgsSchema(Schema):
+    state = fields.String(load_default=None, validate=validate.OneOf(["pending", "accepted"]))
+
+
+class BlockSchema(Schema):
+    id = fields.Integer()
+    handle = fields.String()
+    display_name = fields.String(allow_none=True)
+    actor_url = fields.String()
+    since = fields.DateTime()
