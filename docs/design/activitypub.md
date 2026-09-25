@@ -14,7 +14,9 @@ The first version is **outbound only**: Scrobbler publishes, and it accepts and 
 
 Federation is **off for everyone until they turn it on**. Until then a user can't be found by WebFinger and nothing about them is published.
 
-**Recommendation:** write the protocol layer ourselves, on `cryptography` plus the Flask, SQLAlchemy and worker setup we already have (about 1,500 lines, in the four phases below), rather than adopt a library. The main reason is licensing (see [Build or buy](#build-or-buy)).
+**Decided:** we write the protocol layer ourselves, on `cryptography` plus the Flask, SQLAlchemy and worker setup we already have (about 1,500 lines, in the four phases below). Scrobbler is BSD-licensed, and the ready-made Python library is AGPL (see [Build or buy](#build-or-buy)).
+
+All of it lives in **one self-contained package, `scrobbler.federation`**, behind a narrow interface. It can then be changed, replaced or switched off without touching the rest of the app, and changes to the specs (signature schemes, vocabulary, FEPs) stay inside it. See [Module structure](#module-structure).
 
 ## What users get
 
@@ -48,6 +50,72 @@ POST /users/alice/inbox  or  /inbox          ─►  API  verify signature, reco
 - The **API** serves everything a remote server fetches: WebFinger, NodeInfo, actors, outboxes and inboxes. The inbox only validates and records; it never makes outbound calls itself.
 - The **worker** (today's import worker, generalised to `flask worker`) does all outbound work: `Accept`s, post deliveries, retries, and the scheduled weekly and milestone posts. It uses the same claim-with-`SKIP LOCKED` pattern as imports.
 - The **UI** gains the Sharing and Followers pages, which call new `/api/v1/federation/*` endpoints.
+
+## Module structure
+
+Everything to do with ActivityPub lives in `src/scrobbler/federation/`. The rest of Scrobbler knows only two things about it: how to switch it on, and a handful of domain events. Replacing the implementation (with another library, or a rewrite when the specs move on) means replacing this package; nothing else changes.
+
+```
+src/scrobbler/
+  events.py                 # core → anyone: blinker signals (scrobbles_stored, now_playing_changed, …)
+  worker.py                 # generic worker: runs tasks registered by any module
+  federation/
+    __init__.py             # init_app(app): the ONLY entry point. No-op unless FEDERATION_ENABLED
+    config.py               # FEDERATION_* settings and their validation
+    protocol/               # pure ActivityPub: no Flask, no SQLAlchemy, no scrobbler imports
+      vocab.py              #   JSON-LD builders: Person, Note, Create, Accept, Update, Delete, collections
+      addressing.py         #   visibility → to/cc
+      webfinger.py          #   JRD documents, acct: parsing
+      nodeinfo.py
+      signatures/
+        base.py             #   Signer / Verifier interfaces, SignedRequest value object
+        draft_cavage.py     #   one module per scheme; add/remove schemes here
+        rfc9421.py
+    net.py                  # SSRF-safe HTTP client; signed GET/POST using protocol.signatures
+    models.py               # federation_* tables (own migrations, see below)
+    keys.py                 # key generation, encryption at rest, rotation
+    inbox.py                # activity-type → handler registry (like the Last.fm method registry)
+    delivery.py             # queue, retries, shared-inbox fan-out (a worker task)
+    publishing/             # what gets posted; each kind is a plug-in
+      summary.py            #   weekly summary
+      milestones.py
+      now_playing.py
+    subscribers.py          # connects core events to publishing
+    web.py                  # Flask blueprint: webfinger, nodeinfo, actor, inbox, outbox, collections
+    api.py                  # /api/v1/federation/* (settings, followers) for the UI
+    metrics.py              # federation's own Prometheus metrics
+```
+
+**Rules that keep the boundary clean:**
+
+1. **The core never imports `scrobbler.federation`.** The only exception is `create_app()`, which calls `federation.init_app(app)`.
+   - Core code tells the outside world what happened by sending **domain events** from `scrobbler/events.py`:
+     - `scrobbles_stored(user, scrobbles, source)`
+     - `now_playing_changed(user, track or None)`
+     - `import_finished(user, job)`
+     - `user_deleted(user)`
+   - These are blinker signals; blinker is already a Flask dependency. Federation subscribes to them; with federation off, nothing listens.
+   - Imports can pass `source="import"`, which is how milestones know to ignore imported history.
+2. **Federation reads core data only through core services** (`services.stats`, `services.accounts`), never by querying core tables directly. So core schema changes don't break it.
+3. **`federation.protocol` is pure.** It has no Flask, SQLAlchemy or `scrobbler` imports: just dicts, dataclasses and `cryptography`.
+   - This is where spec changes land. A new signature scheme is a new module under `signatures/`. A vocabulary change is a builder in `vocab.py`.
+   - It's tested with spec test vectors and recorded requests alone.
+4. **Pluggable pieces go through registries**, not `if` chains:
+   - **Signature schemes.** `FEDERATION_SIGNATURE_SCHEMES=draft-cavage,rfc9421` sets which schemes are accepted and the order they're tried when sending. Dropping draft-cavage one day would be a config change followed by deleting a module.
+   - **Inbox activity handlers**: activity type → handler, the same pattern as the Last.fm method registry.
+   - **Post kinds**: summary, milestones and now playing each register as a publisher.
+5. **Federation owns its data.** Its tables are all prefixed `federation_` and have foreign keys to `users` only.
+   - Its migrations live in their own Alembic branch (`migrations/versions/federation_*`, `branch_labels=("federation",)`), so they can be dropped or rewritten without touching the core migration history.
+   - Removing the module means dropping its branch, which drops its tables.
+6. **Work in the background goes through a generic task runner.** Today's import worker becomes `scrobbler/worker.py`, which runs tasks registered by modules: imports register theirs, and federation registers delivery and scheduled posting. The worker doesn't know what ActivityPub is.
+7. **Enforced by tests.** A boundary test walks every module's imports and fails if:
+   - anything outside `scrobbler.federation` imports it (apart from `create_app`),
+   - `federation.protocol` imports Flask, SQLAlchemy or `scrobbler`, or
+   - federation code imports core models directly.
+
+   There's also a test that the whole app works with `FEDERATION_ENABLED=0`: no routes registered, no signal receivers, no tables touched.
+
+**Switching it off:** with `FEDERATION_ENABLED=0` (the default until an operator sets up a domain), `init_app` registers nothing. There are no routes, no subscribers and no worker tasks, and the app behaves exactly as it does today.
 
 ## Protocol pieces
 
@@ -195,9 +263,13 @@ A new post for every track would flood followers' timelines. There are two optio
 | Maturity | New code, but the scope is narrow | Active, but young (0.3.x, one maintainer) | The most complete framework |
 | Effort | About 1,500 lines, mostly signatures, inbox and delivery | Less code, but we'd adapt its storage and flow to ours | A new service to run and monitor |
 
-Unless you're happy to license Scrobbler under the AGPL, adopting Pubby isn't free. Fedify is excellent, but it would split the backend across two languages. The protocol surface we need is small (four activity types in and three out), so writing it ourselves is the least total cost. It also keeps ActivityPub on the same metrics, dashboards and tests as everything else.
+**Decided: write it ourselves.** Scrobbler is BSD-3-Clause licensed. Using Pubby inside the app would make the running program subject to the AGPL, which defeats the point of a permissive licence. Fedify is excellent, but it would split the backend across two languages. The protocol surface we need is small (four activity types in and three out), so writing it ourselves is the least total cost. It also keeps ActivityPub on the same metrics, dashboards and tests as everything else, and it can all live in the one replaceable module described above.
+
+New dependency: `cryptography` (Apache-2.0 or BSD), for keys and signatures.
 
 ## Data model
+
+All of these are federation's own tables, prefixed `federation_` and managed in its own Alembic branch (the names below leave the prefix off, except the first). The only link to the core schema is a foreign key to `users`.
 
 | Table | Holds |
 |---|---|
@@ -258,6 +330,14 @@ Everything goes on the existing Prometheus and Grafana setup:
 
 Each phase can be released on its own, with its migration, docs, OpenAPI updates, metrics and tests.
 
+0. **Groundwork**, with no user-visible change:
+   - `scrobbler/events.py`, and the core sending its events
+   - the generic `scrobbler/worker.py`, with imports moved onto it
+   - the empty `scrobbler.federation` package with `init_app`
+   - its Alembic branch
+   - the boundary tests
+
+   This lands first so every later phase is built inside the boundary from day one.
 1. **Discoverable profile.** Settings, keys, WebFinger, the actor, NodeInfo and the Sharing page. A user can turn sharing on and be found from Mastodon, but can't be followed yet.
 2. **Followers.** Inbox, signature verification (both schemes), the delivery queue with retries and signing, `Accept`, removing and blocking followers, the Followers page, and the GoToSocial CI test.
 3. **Posts.** The outbox, weekly summaries, milestones, and deleting posts when sharing is turned off. Adds the Federation dashboard and alerts.
@@ -274,11 +354,14 @@ This is the "profiles plus friends' listening" option, deliberately left out of 
 
 ## Decisions for you
 
+Settled so far: **build it ourselves** (the project is BSD-3-Clause), inside **one replaceable module**.
+
+Still open:
+
 1. **Domain.** Handles on the UI's domain (nginx forwards `/.well-known/webfinger`) or on the API's? Both are supported; this is a deployment choice, but it's permanent once people follow.
-2. **Licence.** OK to write it ourselves (recommended), or would you rather adopt Pubby and accept the AGPL?
-3. **Default visibility** for summaries and milestones: *Unlisted* (recommended) or *Public*?
-4. **Now-playing default** once a user turns it on: the profile field (recommended), or posts?
-5. **Does it need an admin?** Phase 2 assumes domain blocks set in configuration. A real moderation UI (reports, per-domain policies) would be a separate piece of work.
+2. **Default visibility** for summaries and milestones: *Unlisted* (recommended) or *Public*?
+3. **Now-playing default** once a user turns it on: the profile field (recommended), or posts?
+4. **Does it need an admin?** Phase 2 assumes domain blocks set in configuration. A real moderation UI (reports, per-domain policies) would be a separate piece of work.
 
 ## Sources
 
