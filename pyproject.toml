@@ -1,5 +1,5 @@
 [project]
-name = "scrobbler"
+name = "scrobby"
 version = "0.1.0"
 description = "Self-hosted, Last.fm-compatible music scrobbling service"
 readme = "README.md"

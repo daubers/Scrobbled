@@ -3,7 +3,7 @@
 from importlib.metadata import PackageNotFoundError, version
 
 try:
-    __version__ = version("scrobbler")  # set from the release tag at build time
+    __version__ = version("scrobby")  # distribution name; set from the release tag at build time
 except PackageNotFoundError:  # running from a source tree without installing
     __version__ = "0.0.0+unknown"
 

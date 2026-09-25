@@ -136,7 +136,7 @@ Everything runs from `.gitea/workflows/ci.yml`:
 - **Pushes to `main` and `v*` tags**, once every check has passed:
   - both images are pushed to the ProGet `scrobbler` Docker feed. `main` builds are tagged `main` and `sha-<commit>`; tags are tagged `<version>`, `latest` and `sha-<commit>`.
   - the OpenAPI spec, dashboards and Prometheus config are uploaded to the `scrobbler-assets` feed under `scrobbler/<version>/` or `scrobbler/main/`.
-- **`v*` tags** also publish the wheel and sdist to the `scrobbler-python` PyPI feed.
+- **`v*` tags** also publish the wheel and sdist to the `scrobbler-python` PyPI feed, as the `scrobby` distribution. The import name is `scrobbler`. (`scrobbler` on public PyPI is an unrelated project.)
 - **Every run** is posted to the `ScrobblingService` topic on notify.daubney.dev.
 
 The workflow needs these repository secrets and variables:
