@@ -1,0 +1,65 @@
+name: Notify
+description: Publish a workflow result to the ScrobblingService ntfy topic. Never fails the calling job.
+
+inputs:
+  status:
+    description: Overall result (success, failure or cancelled)
+    required: true
+  title:
+    description: Notification title, e.g. "CI main"
+    required: true
+  message:
+    description: Extra lines appended to the notification body
+    required: false
+    default: ""
+  url:
+    description: ntfy server base URL
+    required: true
+  topic:
+    description: ntfy topic
+    required: true
+  user:
+    description: ntfy username
+    required: true
+  password:
+    description: ntfy password
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Send ntfy notification
+      shell: bash
+      continue-on-error: true
+      env:
+        STATUS: ${{ inputs.status }}
+        TITLE: ${{ inputs.title }}
+        EXTRA: ${{ inputs.message }}
+        NTFY_URL: ${{ inputs.url }}
+        NTFY_TOPIC: ${{ inputs.topic }}
+        NTFY_USER: ${{ inputs.user }}
+        NTFY_PASSWORD: ${{ inputs.password }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_number }}
+        REF_NAME: ${{ github.ref_name }}
+        SHA: ${{ github.sha }}
+        ACTOR: ${{ github.actor }}
+      run: |
+        case "$STATUS" in
+          success)   icon="✅"; priority=3; tags='["white_check_mark"]' ;;
+          cancelled) icon="⚪"; priority=3; tags='["heavy_minus_sign"]' ;;
+          *)         icon="❌"; priority=4; tags='["x"]' ;;
+        esac
+        commit_msg="$(git log -1 --format=%s "$SHA" 2>/dev/null || echo "")"
+        body="$(printf '%s @ %s by %s\n%s\n%s' "$REF_NAME" "${SHA:0:7}" "$ACTOR" "$commit_msg" "$EXTRA")"
+        payload="$(jq -n \
+          --arg topic "$NTFY_TOPIC" \
+          --arg title "$TITLE $icon" \
+          --arg message "$body" \
+          --arg click "$RUN_URL" \
+          --argjson priority "$priority" \
+          --argjson tags "$tags" \
+          '{topic: $topic, title: $title, message: $message, click: $click, priority: $priority, tags: $tags}')"
+        curl -fsS -m 15 -u "$NTFY_USER:$NTFY_PASSWORD" \
+          -H 'Content-Type: application/json' \
+          --data-binary "$payload" "$NTFY_URL" -o /dev/null \
+          || echo "::warning::ntfy notification failed"

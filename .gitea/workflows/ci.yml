@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["**"]
+  pull_request:
+  workflow_call:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: https://github.com/astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: https://github.com/astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - run: uv run pytest
+
+  notify:
+    needs: [lint, test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.gitea/actions/notify
+        with:
+          status: ${{ (needs.lint.result == 'success' && needs.test.result == 'success') && 'success' || ((needs.lint.result == 'cancelled' || needs.test.result == 'cancelled') && 'cancelled' || 'failure') }}
+          title: CI ${{ github.ref_name }}
+          message: "lint: ${{ needs.lint.result }} · test: ${{ needs.test.result }}"
+          url: ${{ vars.NTFY_URL }}
+          topic: ${{ vars.NTFY_TOPIC }}
+          user: ${{ secrets.NTFY_USER }}
+          password: ${{ secrets.NTFY_PASSWORD }}

@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local config
+.env
+
+# Runtime
+prometheus_multiproc/
+
+# IDEs
+.idea/
+.junie/
+.vscode/
+.DS_Store
