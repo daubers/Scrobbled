@@ -11,7 +11,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from scrobbler import metrics
 from scrobbler.extensions import db
-from scrobbler.models import ApiApp, Session, UiToken, User
+from scrobbler.models import ApiApp, AuthToken, Session, UiToken, User
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{2,32}$")
 MIN_PASSWORD_LENGTH = 8
@@ -141,3 +141,51 @@ def revoke_session(user: User, session_id: int) -> bool:
     result = db.session.execute(db.delete(Session).filter_by(user_id=user.id, id=session_id))
     db.session.commit()
     return result.rowcount > 0
+
+
+# --- Last.fm desktop auth tokens -----------------------------------------------
+
+
+class AuthTokenError(Exception):
+    """Raised with a reason: "invalid", "expired" or "unauthorized"."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)
+
+
+def create_auth_token(api_app: ApiApp) -> str:
+    token = AuthToken(token=secrets.token_hex(16), api_app=api_app)
+    db.session.add(token)
+    db.session.commit()
+    return token.token
+
+
+def get_auth_token(token: str) -> AuthToken:
+    """A token that exists and hasn't expired, or AuthTokenError."""
+    auth_token = db.session.scalar(db.select(AuthToken).filter_by(token=token))
+    if auth_token is None:
+        raise AuthTokenError("invalid")
+    ttl = timedelta(seconds=current_app.config["AUTH_TOKEN_TTL_SECONDS"])
+    if auth_token.created_at + ttl <= _now():
+        raise AuthTokenError("expired")
+    return auth_token
+
+
+def approve_auth_token(user: User, token: str) -> AuthToken:
+    auth_token = get_auth_token(token)
+    auth_token.user = user
+    db.session.commit()
+    return auth_token
+
+
+def exchange_auth_token(api_app: ApiApp, token: str) -> Session:
+    """Swap an approved token for a session key. Tokens are single use."""
+    auth_token = get_auth_token(token)
+    if auth_token.api_app_id != api_app.id:
+        raise AuthTokenError("invalid")
+    if auth_token.user is None:
+        raise AuthTokenError("unauthorized")
+    user = auth_token.user
+    db.session.delete(auth_token)
+    return create_session(user, api_app, flow="desktop")

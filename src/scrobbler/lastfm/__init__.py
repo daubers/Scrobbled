@@ -2,7 +2,7 @@
 
 import time
 
-from flask import Blueprint, Response, request
+from flask import Blueprint, Response, current_app, redirect, request
 
 from scrobbler import metrics
 from scrobbler.extensions import db
@@ -90,6 +90,14 @@ def dispatch() -> Response:
         time.perf_counter() - start
     )
     return response
+
+
+@bp.route("/api/auth/", methods=["GET"], strict_slashes=False)
+def approve_redirect() -> Response:
+    """Where Last.fm clients send users to approve a token. Approval happens in the
+    separately hosted web UI, so hand the query string over to its approve page."""
+    query = request.query_string.decode()
+    return redirect(f"{current_app.config['UI_BASE_URL']}/approve.html?{query}", code=302)
 
 
 from scrobbler.lastfm import methods  # noqa: E402,F401  (register handlers)

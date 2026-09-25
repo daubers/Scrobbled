@@ -56,3 +56,14 @@ class SessionSchema(Schema):
         dump_only=True, attribute="api_app.name", metadata={"example": "Pano Scrobbler"}
     )
     created_at = fields.DateTime(dump_only=True)
+
+
+class AuthTokenInfoSchema(Schema):
+    app_name = fields.String(
+        dump_only=True, attribute="api_app.name", metadata={"example": "Pano Scrobbler"}
+    )
+    approved = fields.Boolean(dump_only=True)
+
+
+class ApproveTokenSchema(Schema):
+    token = fields.String(required=True, metadata={"description": "Token from auth.getToken"})

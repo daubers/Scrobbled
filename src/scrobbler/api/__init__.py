@@ -43,8 +43,9 @@ def init_app(app: Flask) -> None:
         },
     )
 
-    from scrobbler.api import apps, auth, sessions
+    from scrobbler.api import apps, auth, sessions, tokens
 
     api.register_blueprint(auth.blp, url_prefix="/api/v1/auth")
     api.register_blueprint(apps.blp, url_prefix="/api/v1/apps")
     api.register_blueprint(sessions.blp, url_prefix="/api/v1/sessions")
+    api.register_blueprint(tokens.blp, url_prefix="/api/v1/tokens")
