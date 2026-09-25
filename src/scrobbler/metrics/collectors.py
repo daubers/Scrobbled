@@ -38,7 +38,20 @@ class DatabaseStatsCollector(Collector):
             now_playing = conn.execute(
                 text("SELECT count(*) FROM now_playing WHERE expires_at > now()")
             ).scalar_one()
-        return {"users": users, "active": active, "now_playing": now_playing}
+            import_jobs = dict(
+                conn.execute(
+                    text(
+                        "SELECT status, count(*) FROM import_jobs "
+                        "WHERE status IN ('pending', 'running') GROUP BY status"
+                    )
+                ).all()
+            )
+        return {
+            "users": users,
+            "active": active,
+            "now_playing": now_playing,
+            "import_jobs": {s: import_jobs.get(s, 0) for s in ("pending", "running")},
+        }
 
     def values(self) -> dict | None:
         with self._lock:
@@ -66,3 +79,9 @@ class DatabaseStatsCollector(Collector):
             "Users currently playing a track",
             value=values["now_playing"],
         )
+        jobs = GaugeMetricFamily(
+            COLLECTED["import_jobs"], "Import jobs waiting or in progress", labels=["status"]
+        )
+        for status, count in values["import_jobs"].items():
+            jobs.add_metric([status], count)
+        yield jobs

@@ -97,6 +97,24 @@ registrations_total = Counter(
     "User registrations",
 )
 
+# History imports (counted by the import worker)
+imports_total = Counter(
+    "scrobbler_imports_total",
+    "Import jobs by source and lifecycle event (created, completed, failed, cancelled)",
+    ["source", "status"],
+)
+imported_scrobbles_total = Counter(
+    "scrobbler_imported_scrobbles_total",
+    "Rows read by imports, by outcome",
+    ["source", "result"],
+)
+import_duration_seconds = Histogram(
+    "scrobbler_import_duration_seconds",
+    "Time to process an import job",
+    ["source"],
+    buckets=(1, 5, 15, 30, 60, 120, 300, 600, 1800, 3600, 7200),
+)
+
 # Database
 db_query_duration_seconds = Histogram(
     "scrobbler_db_query_duration_seconds",
@@ -124,4 +142,5 @@ COLLECTED = {
     "users": "scrobbler_users",
     "active_users": "scrobbler_active_users",
     "now_playing_active": "scrobbler_now_playing_active",
+    "import_jobs": "scrobbler_import_jobs",
 }

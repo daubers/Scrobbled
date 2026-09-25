@@ -5,6 +5,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -126,3 +127,33 @@ class NowPlaying(db.Model):
     duration: Mapped[int | None] = mapped_column(Integer)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ImportJob(db.Model):
+    """A history import: an uploaded export file, or a pull from the Last.fm API.
+
+    Created by the API and processed by the import worker (`flask imports worker`).
+    """
+
+    __tablename__ = "import_jobs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    source: Mapped[str] = mapped_column(String(16))  # csv, json or lastfm
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    filename: Mapped[str | None] = mapped_column(String(255))
+    lastfm_username: Mapped[str | None] = mapped_column(String(64))
+    payload: Mapped[bytes | None] = mapped_column(LargeBinary, deferred=True)  # gzipped upload
+    total: Mapped[int | None] = mapped_column(Integer)  # rows or tracks, once known
+    processed: Mapped[int] = mapped_column(Integer, default=0)
+    imported: Mapped[int] = mapped_column(Integer, default=0)
+    duplicates: Mapped[int] = mapped_column(Integer, default=0)
+    skipped: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[str | None] = mapped_column(Text)
+    # Last.fm pulls resume from here, and only fetch scrobbles before pull_until.
+    next_page: Mapped[int | None] = mapped_column(Integer)
+    pull_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

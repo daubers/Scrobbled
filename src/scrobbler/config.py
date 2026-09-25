@@ -49,6 +49,15 @@ class Config:
         },
     }
 
+    # History imports. Pulling from Last.fm is offered only when an API key is set
+    # (get one at https://www.last.fm/api/account/create).
+    LASTFM_API_KEY = os.environ.get("LASTFM_API_KEY", "")
+    LASTFM_API_URL = os.environ.get("LASTFM_API_URL", "https://ws.audioscrobbler.com/2.0/")
+    LASTFM_REQUEST_INTERVAL = float(os.environ.get("LASTFM_REQUEST_INTERVAL", "0.25"))
+    IMPORT_MAX_BYTES = int(os.environ.get("IMPORT_MAX_BYTES", str(200 * 1024 * 1024)))
+    MAX_CONTENT_LENGTH = IMPORT_MAX_BYTES + 1024 * 1024  # uploads are the largest requests
+    IMPORT_WORKER_METRICS_PORT = int(os.environ.get("IMPORT_WORKER_METRICS_PORT", "9101"))
+
     # Last.fm behaviour
     AUTH_TOKEN_TTL_SECONDS = 60 * 60
     UI_TOKEN_TTL_DAYS = 30
