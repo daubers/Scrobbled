@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from scrobbler.services import imports
+from scrobbler import worker
 
 
 def csv_bytes(n=3) -> bytes:
@@ -45,7 +45,7 @@ def test_upload_then_follow_progress(client, auth):
     job = response.get_json()
     assert (job["source"], job["status"], job["filename"]) == ("csv", "pending", "export.csv")
 
-    imports.run_worker(once=True)
+    worker.run(once=True)
     done = client.get(f"/api/v1/imports/{job['id']}", headers=auth).get_json()
     assert (done["status"], done["imported"], done["total"]) == ("completed", 3, 3)
     assert client.get("/api/v1/me/summary", headers=auth).get_json()["scrobbles"] == 3

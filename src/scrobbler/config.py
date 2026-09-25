@@ -56,7 +56,10 @@ class Config:
     LASTFM_REQUEST_INTERVAL = float(os.environ.get("LASTFM_REQUEST_INTERVAL", "0.25"))
     IMPORT_MAX_BYTES = int(os.environ.get("IMPORT_MAX_BYTES", str(200 * 1024 * 1024)))
     MAX_CONTENT_LENGTH = IMPORT_MAX_BYTES + 1024 * 1024  # uploads are the largest requests
-    IMPORT_WORKER_METRICS_PORT = int(os.environ.get("IMPORT_WORKER_METRICS_PORT", "9101"))
+    # IMPORT_WORKER_METRICS_PORT is the pre-0.3 name, still honoured.
+    WORKER_METRICS_PORT = int(
+        os.environ.get("WORKER_METRICS_PORT", os.environ.get("IMPORT_WORKER_METRICS_PORT", "9101"))
+    )
 
     # Last.fm behaviour
     AUTH_TOKEN_TTL_SECONDS = 60 * 60

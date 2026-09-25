@@ -1,7 +1,7 @@
 import time
 from contextlib import contextmanager
 
-from scrobbler import events
+from scrobbler import events, worker
 from scrobbler.services import imports, scrobbles
 from scrobbler.services.scrobbles import TrackInput
 
@@ -62,7 +62,7 @@ def test_imports_announce_stored_plays_and_completion(app, user):
     csv = f"Artist,,One,{when}\nArtist,,One,{when}\nArtist,,Two,{when}\n"
     job = imports.create_file_import(user, "export.csv", csv.encode())
     with capture(events.scrobbles_stored) as stored, capture(events.import_finished) as finished:
-        imports.run_worker(once=True)
+        worker.run(once=True)
     [(_, kwargs)] = stored
     assert kwargs["source"] == "import"
     assert sorted(s.track for s in kwargs["scrobbles"]) == ["One", "Two"]  # the repeat once

@@ -37,9 +37,12 @@ def create_app(config_object=None):
         max_age=600,
     )
 
-    from scrobbler.cli import imports_cli
+    from scrobbler.cli import imports_cli, worker_command
+    from scrobbler.services import imports as import_service
 
+    app.cli.add_command(worker_command)
     app.cli.add_command(imports_cli)
+    import_service.register_worker_tasks()
 
     from scrobbler.metrics import db as db_metrics
 

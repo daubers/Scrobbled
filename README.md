@@ -12,7 +12,7 @@ Prometheus ◄── API :9100/metrics, postgres-exporter ──► Grafana
 - **API** (`src/scrobbler/`): Flask under gunicorn. It is API-only and serves no pages.
 - **Web UI** (`frontend/`): plain HTML, CSS and JavaScript with no build step. Host it anywhere static files can be served.
 - **Docs**: OpenAPI at `/api/openapi.json`, Swagger UI at `/api/docs` and ReDoc at `/api/redoc`. A copy of the spec is committed at `docs/openapi.json`.
-- **Import worker**: `flask imports worker` imports Last.fm history in the background, from export files or straight from Last.fm.
+- **Worker**: `flask worker` runs background work, such as importing Last.fm history from export files or straight from Last.fm.
 - **Monitoring**: Prometheus metrics, four provisioned Grafana dashboards, and alert rules.
 
 ## Run it
@@ -47,7 +47,7 @@ The images are `pkgs.daubney.dev/scrobbler/scrobbler-api` and `pkgs.daubney.dev/
 | `RUN_MIGRATIONS` | api image | `1` | Apply database migrations on start |
 | `LASTFM_API_KEY` | api, worker | *(unset)* | Enables importing straight from Last.fm ([get a key](https://www.last.fm/api/account/create)) |
 | `IMPORT_MAX_BYTES` | api | 200 MB | Largest export file accepted |
-| `IMPORT_WORKER_METRICS_PORT` | worker | `9101` | The worker's Prometheus metrics port |
+| `WORKER_METRICS_PORT` | worker | `9101` | The worker's Prometheus metrics port (`IMPORT_WORKER_METRICS_PORT` still works) |
 | `API_BASE_URL` | ui image | `http://localhost:5050` | API location, written into `config.js` and the CSP |
 
 In `docker compose` the host ports are set with `DB_PORT`, `API_PORT`, `UI_PORT`, `PROMETHEUS_PORT` and `GRAFANA_PORT`.
@@ -100,7 +100,7 @@ uv sync
 uv run flask --app scrobbler db upgrade
 uv run flask --app scrobbler run --port 5050 # API (port 5000 is taken by AirPlay on macOS)
 python -m http.server 8080 -d frontend       # UI
-uv run flask --app scrobbler imports worker  # process imports
+uv run flask --app scrobbler worker          # background work (imports, …)
 uv run pytest                                # needs TEST_DATABASE_URL (see .env.example)
 uv run ruff check && uv run ruff format --check
 ```

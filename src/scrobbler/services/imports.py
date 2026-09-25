@@ -569,15 +569,19 @@ def _finish(job: ImportJob, status: str, error: str | None = None) -> None:
     events.send(events.import_finished, db.session.get(User, job.user_id), job=job)
 
 
-def run_worker(poll_seconds: float = 2.0, once: bool = False) -> None:
-    requeue_stalled()
-    while True:
-        job = claim_next_job()
-        if job is not None:
-            log.info("import job %s (%s) for user %s started", job.id, job.source, job.user_id)
-            process_job(job)
-            log.info("import job %s finished: %s", job.id, job.status)
-            continue
-        if once:
-            return
-        time.sleep(poll_seconds)
+def work_once() -> bool:
+    """Worker task: process the oldest waiting import, if any."""
+    job = claim_next_job()
+    if job is None:
+        return False
+    log.info("import job %s (%s) for user %s started", job.id, job.source, job.user_id)
+    process_job(job)
+    log.info("import job %s finished", job.id)
+    return True
+
+
+def register_worker_tasks() -> None:
+    from scrobbler import worker
+
+    worker.register_task("imports", work_once)
+    worker.register_periodic("imports.requeue_stalled", 60, requeue_stalled)

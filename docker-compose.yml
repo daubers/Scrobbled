@@ -42,13 +42,13 @@ services:
       db:
         condition: service_healthy
 
-  # Processes history imports (uploaded exports and pulls from Last.fm).
+  # Background work: history imports, and tasks registered by optional modules.
   worker:
     image: ${SCROBBLER_REGISTRY:-pkgs.daubney.dev/scrobbler}/scrobbler-api:${SCROBBLER_IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: docker/api.Dockerfile
-    command: ["flask", "--app", "scrobbler", "imports", "worker"]
+    command: ["flask", "--app", "scrobbler", "worker"]
     environment:
       DATABASE_URL: postgresql+psycopg://scrobbler:${POSTGRES_PASSWORD:-scrobbler}@db:5432/scrobbler
       SECRET_KEY: ${SECRET_KEY:-change-me}

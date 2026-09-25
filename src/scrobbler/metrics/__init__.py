@@ -115,6 +115,13 @@ import_duration_seconds = Histogram(
     buckets=(1, 5, 15, 30, 60, 120, 300, 600, 1800, 3600, 7200),
 )
 
+# Background worker
+worker_tasks_total = Counter(
+    "scrobbler_worker_tasks_total",
+    "Worker task runs that did work (queue tasks) or ran (periodic tasks), and failures",
+    ["task", "outcome"],
+)
+
 # Database
 db_query_duration_seconds = Histogram(
     "scrobbler_db_query_duration_seconds",
