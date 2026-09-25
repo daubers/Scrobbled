@@ -1,5 +1,13 @@
 # ActivityPub phase 2: followers
 
+**Status: done** on `feature/activitypub` (`a6d3fb6` … `fe95f59`). The GoToSocial interop test passes locally and in CI. Before merging, the plan still calls for a manual pass with a real Mastodon account through a tunnel.
+
+Where this differed from the plan:
+
+- **httpcore instead of httpx.** httpcore is the transport layer underneath httpx, and it publicly supports the custom network backend that connecting to a pre-checked address needs.
+- **No in-process test with two Scrobbler instances.** Scrobbler can't initiate follows yet, so one instance has nothing to send the other. Scripted remote accounts over real HTTP cover the same paths, and GoToSocial is the real second server.
+- **Undo of a Block.** Unblocking needed it: GoToSocial otherwise keeps the block.
+
 This implements phase 2 of [activitypub.md](activitypub.md), building on [phase 1](activitypub-phase1.md).
 
 **Outcome:** people on Mastodon, GoToSocial and similar servers can follow a user who shares. Follows are accepted automatically, or wait for the user's approval if they've turned it on. The user sees their followers and can approve, decline, remove or block them. Scrobbler signs everything it sends and checks the signature on everything it receives. Posts come in phase 3; this phase makes the relationship work end to end.

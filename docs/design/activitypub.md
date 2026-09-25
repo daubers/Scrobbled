@@ -391,3 +391,13 @@ Still open (neither is needed before phase 3):
 - [SocialHub: RFC 9421 HTTP signatures in 2026](https://socialhub.activitypub.rocks/t/rfc-9421-http-signatures-in-2026/8427)
 - [Funkwhale federation docs](https://docs.funkwhale.audio/develop/developer/federation/index.html): the `Listen` activity with a `Track` object
 - [Pubby on PyPI](https://pypi.org/project/pubby/): features and AGPL-3.0-or-later licence
+
+## Lessons from interop testing (phase 2)
+
+Testing against a real GoToSocial server changed a few details:
+
+- **Key IDs come in three shapes.** A fragment of the actor (`<actor>#main-key`, used by Mastodon), a path that serves the actor document (`<actor>/main-key`, used by GoToSocial), or a separate key document with an `owner`. All three are resolved.
+- **Rejects reference the Follow by ID rather than embedding it.** Some servers match an embedded Follow by the pair of accounts. A late Reject of an old Follow would then cancel a newer request between the same two accounts.
+- **An Undo only removes the Follow it names.** Deliveries race, so an Undo of an older Follow can arrive after a newer one.
+- **Unblocking sends an Undo of the Block**, so the other server lets the person follow again.
+- **Actors publish a `featured` collection** (empty for now). Mastodon and GoToSocial fetch it.

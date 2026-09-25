@@ -32,6 +32,10 @@ or switched off without touching anything else. Design: `docs/design/activitypub
 | `FEDERATION_DOMAIN` | Handle domain, normally the web UI's host: users are `@name@<domain>`. **Permanent once anyone follows.** |
 | `FEDERATION_BASE_URL` | Public `https://` URL actors live under (`<base>/users/<name>`). Normally the web UI's origin, with the UI's nginx forwarding the ActivityPub paths to the API. |
 | `FEDERATION_KEY_SECRET` | 32+ characters; encrypts actors' private keys at rest (HKDF → Fernet). **Back it up; never change it.** |
+| `FEDERATION_SIGNATURE_SCHEMES` | Outgoing signing order; the next scheme is tried only on a 401. Default `draft-cavage,rfc9421` |
+| `FEDERATION_BLOCKED_DOMAINS` | Comma-separated domains (subdomains included) refused at the inbox |
+| `FEDERATION_DELIVERY_CONCURRENCY` | Parallel deliveries per worker (1-32, default 4) |
+| `FEDERATION_INSECURE_TESTING` | **Tests only.** Allows `http://` and private addresses; refused unless the domain is under `.test` |
 
 The UI container forwards these paths to the API when `API_INTERNAL_URL` is set (see `docker/ui-config.sh`):
 
@@ -44,14 +48,30 @@ Every ActivityPub ID is built from `FEDERATION_BASE_URL`, never from the incomin
 
 | Module | Holds |
 |---|---|
-| `protocol/` | Pure protocol code: media types, vocabulary, WebFinger, NodeInfo, host-meta |
-| `models.py` | `federation_settings` and `federation_keys` |
+| `protocol/` | Pure protocol code: media types, vocabulary, WebFinger, NodeInfo, host-meta, and `signatures/` (draft-cavage and RFC 9421, one module each) |
+| `net.py` | The SSRF-safe HTTP client, the only way out |
+| `outbound.py` | Signed GETs (as the instance actor) and POSTs (as a user), with scheme fallback on 401 |
+| `remote.py` | Remote actors: fetched, validated, cached; key id to actor |
+| `inbox.py` | Intake (no network) and worker processing: signature check, identity checks, handlers by activity type |
+| `followers.py` | Follower state: follows, undo, approve, remove, block, sharing off |
+| `activities.py` | Activities we send (Accept, Reject, Block, Undo), stored and queued per inbox |
+| `delivery.py` | The delivery worker task: leases, retries with backoff, gone inboxes, gauges |
+| `models.py` | `federation_*` tables |
 | `keys.py` | Key pairs, created once and encrypted at rest |
 | `sharing.py` | Per-user settings, and who is sharing |
+| `ids.py` | Our ActivityPub ids, all from `FEDERATION_BASE_URL` |
 | `web.py` | The endpoints other servers call |
 | `api.py` and `schemas.py` | `/api/v1/federation/*` for the web UI |
 | `openapi.py` | OpenAPI descriptions of `web.py`'s endpoints |
 | `metrics.py` | Federation's own Prometheus metrics |
+
+## Worker tasks
+
+`federation.inbox` (process received activities), `federation.deliver` (send queued ones), `federation.inbox.maintenance` (re-queue stalled, prune after 30 days) and `federation.gauges` (queue and follower gauges). All are registered only when federation is on.
+
+## Interop
+
+`scripts/interop/run.sh` runs Scrobbler against a real GoToSocial server on a private `.test` network and checks the whole follow life cycle. CI runs it on every push. GoToSocial 0.22.1 ignores a Reject of an already-accepted follow (a TODO in its code, fixed on its main branch), so that one check on its side is skipped until a release includes the fix.
 
 ## Migrations
 

@@ -94,7 +94,12 @@ Unlike live scrobbles, imports keep plays of any age. They still skip rows with 
 
 ## Sharing on the fediverse (in development)
 
-Users can make their profile findable from Mastodon and other fediverse apps as `@name@<your UI host>`. Following, and posts (weekly summaries, milestones, now playing), are still being built; see `docs/design/activitypub.md`. Until then, profiles advertise follower approval, so a follow waits as a request rather than failing.
+Users can make their profile findable from Mastodon and other fediverse apps as `@name@<your UI host>`, and be followed:
+
+- Follows are accepted automatically, or wait for approval if the user turns that on.
+- The **Followers** page lists requests, followers and blocked accounts, with approve, decline, remove, block and unblock.
+
+Posts (weekly summaries, milestones, now playing) are still being built; see `docs/design/activitypub.md`. Federation is tested in CI against a real GoToSocial server (`scripts/interop/run.sh`).
 
 It's **off unless the server enables it**, and then **off for each user** until they switch it on under **Sharing**. To enable it:
 
@@ -109,6 +114,14 @@ It's **off unless the server enables it**, and then **off for each user** until 
 Handles and actor URLs **can't change once anyone follows** a user, so choose the domain carefully.
 
 `FEDERATION_KEY_SECRET` encrypts each user's signing key. **Back it up, and never change it**: losing it means users' keys can't be read, and followers would have to follow again.
+
+Optional settings:
+
+- `FEDERATION_BLOCKED_DOMAINS`: comma-separated domains, including subdomains, whose deliveries and follows are refused.
+- `FEDERATION_DELIVERY_CONCURRENCY`: parallel outgoing deliveries per worker (default 4).
+- `FEDERATION_SIGNATURE_SCHEMES`: the signing order (default `draft-cavage,rfc9421`).
+
+The worker must be running: it processes incoming activities and delivers outgoing ones.
 
 ## Develop
 
