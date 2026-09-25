@@ -992,6 +992,356 @@
         ]
       }
     },
+    "/api/v1/imports/options": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportOptions"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "What can be imported",
+        "description": "Pulling from Last.fm is only offered when the server has a Last.fm API key.",
+        "tags": [
+          "Imports"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/imports/file": {
+      "post": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "description": "Detected from the file name and contents when `auto`",
+            "schema": {
+              "type": "string",
+              "default": "auto",
+              "enum": [
+                "auto",
+                "csv",
+                "json"
+              ]
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_CONTENT"
+          },
+          "413": {
+            "description": "File too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty or unsupported file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportFile"
+              }
+            }
+          }
+        },
+        "summary": "Import an export file",
+        "description": "Accepts lastfm-to-csv CSV files, other CSV/TSV files with a header row, and JSON\nexports of user.getRecentTracks pages. Files may be gzipped.",
+        "tags": [
+          "Imports"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/imports/lastfm": {
+      "post": {
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_CONTENT"
+          },
+          "400": {
+            "description": "Last.fm import isn't configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LastfmImport"
+              }
+            }
+          }
+        },
+        "summary": "Import from Last.fm",
+        "description": "Copies a Last.fm user's public scrobble history into your account.",
+        "tags": [
+          "Imports"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/imports": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportJob"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Your recent imports",
+        "tags": [
+          "Imports"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/imports/{job_id}": {
+      "get": {
+        "responses": {
+          "404": {
+            "description": "No such import",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "One import's progress",
+        "tags": [
+          "Imports"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "job_id",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      ]
+    },
+    "/api/v1/imports/{job_id}/cancel": {
+      "post": {
+        "responses": {
+          "404": {
+            "description": "No such import",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Cancel an import",
+        "description": "Stops a waiting or running import. Scrobbles already imported are kept.",
+        "tags": [
+          "Imports"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "job_id",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      ]
+    },
     "/healthz": {
       "get": {
         "responses": {
@@ -1530,6 +1880,10 @@
       "description": "Your listening history and statistics"
     },
     {
+      "name": "Imports",
+      "description": "Import listening history from a Last.fm export file, or straight from Last.fm. Imports run in the background; poll a job to follow its progress."
+    },
+    {
       "name": "Health",
       "description": "Liveness for load balancers and containers"
     },
@@ -1972,6 +2326,141 @@
             "format": "date-time"
           }
         },
+        "additionalProperties": false
+      },
+      "ImportOptions": {
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "array",
+            "description": "`lastfm` is only listed when the server has a Last.fm API key",
+            "items": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json",
+                "lastfm"
+              ]
+            }
+          },
+          "max_upload_bytes": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ImportFile": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "description": "CSV or JSON export, optionally gzipped",
+            "type": "string",
+            "format": "binary"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "additionalProperties": false
+      },
+      "ImportJob": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "json",
+              "lastfm"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "completed",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "filename": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastfm_username": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Rows or tracks to process, once known"
+          },
+          "processed": {
+            "type": "integer"
+          },
+          "imported": {
+            "type": "integer",
+            "description": "New scrobbles added"
+          },
+          "duplicates": {
+            "type": "integer",
+            "description": "Already in your history"
+          },
+          "skipped": {
+            "type": "integer",
+            "description": "No artist/track, bad date, or future"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "started_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LastfmImport": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "example": "rj"
+          }
+        },
+        "required": [
+          "username"
+        ],
         "additionalProperties": false
       },
       "Health": {

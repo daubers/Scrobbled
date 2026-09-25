@@ -1,6 +1,7 @@
 """Marshmallow schemas for the /api/v1 JSON API. They drive both request
 validation and the generated OpenAPI document."""
 
+from flask_smorest.fields import Upload
 from marshmallow import Schema, fields, validate
 
 
@@ -143,3 +144,55 @@ class SummarySchema(Schema):
     artists = fields.Integer()
     tracks = fields.Integer()
     first_scrobble_at = fields.DateTime(allow_none=True)
+
+
+IMPORT_SOURCES = ["csv", "json", "lastfm"]
+IMPORT_STATUSES = ["pending", "running", "completed", "failed", "cancelled"]
+
+
+class ImportOptionsSchema(Schema):
+    sources = fields.List(
+        fields.String(validate=validate.OneOf(IMPORT_SOURCES)),
+        metadata={"description": "`lastfm` is only listed when the server has a Last.fm API key"},
+    )
+    max_upload_bytes = fields.Integer()
+
+
+class ImportJobSchema(Schema):
+    id = fields.Integer()
+    source = fields.String(validate=validate.OneOf(IMPORT_SOURCES))
+    status = fields.String(validate=validate.OneOf(IMPORT_STATUSES))
+    filename = fields.String(allow_none=True)
+    lastfm_username = fields.String(allow_none=True)
+    total = fields.Integer(
+        allow_none=True, metadata={"description": "Rows or tracks to process, once known"}
+    )
+    processed = fields.Integer()
+    imported = fields.Integer(metadata={"description": "New scrobbles added"})
+    duplicates = fields.Integer(metadata={"description": "Already in your history"})
+    skipped = fields.Integer(metadata={"description": "No artist/track, bad date, or future"})
+    error = fields.String(allow_none=True)
+    created_at = fields.DateTime()
+    started_at = fields.DateTime(allow_none=True)
+    finished_at = fields.DateTime(allow_none=True)
+
+
+class ImportFileSchema(Schema):
+    file = Upload(
+        required=True,
+        metadata={"description": "CSV or JSON export, optionally gzipped"},
+    )
+
+
+class ImportFormatSchema(Schema):
+    format = fields.String(
+        load_default="auto",
+        validate=validate.OneOf(["auto", "csv", "json"]),
+        metadata={"description": "Detected from the file name and contents when `auto`"},
+    )
+
+
+class LastfmImportSchema(Schema):
+    username = fields.String(
+        required=True, validate=validate.Length(min=1, max=64), metadata={"example": "rj"}
+    )
