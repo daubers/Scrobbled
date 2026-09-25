@@ -242,3 +242,33 @@ def remote():
     server = FakeRemote()
     yield server
     server.close()
+
+
+# --- Fast RSA keys --------------------------------------------------------------------------
+# Generating 2048-bit keys dominates federation test time. Tests only need distinct valid
+# keys, so hand out a pool generated once per run (cycling; 16 is plenty per test).
+
+_KEY_POOL: list = []
+
+
+def _pooled_rsa_key(public_exponent=65537, key_size=2048, backend=None):
+
+    if len(_KEY_POOL) < 16:
+        _KEY_POOL.append(_ORIGINAL_GENERATE(public_exponent=public_exponent, key_size=key_size))
+        return _KEY_POOL[-1]
+    _KEY_POOL.append(_KEY_POOL.pop(0))
+    return _KEY_POOL[-1]
+
+
+from cryptography.hazmat.primitives.asymmetric import rsa as _rsa_module  # noqa: E402
+
+_ORIGINAL_GENERATE = _rsa_module.generate_private_key
+
+
+@pytest.fixture(autouse=True)
+def _fast_rsa_keys(monkeypatch):
+    import federation_helpers
+    from scrobbler.federation import keys as federation_keys
+
+    monkeypatch.setattr(federation_keys.rsa, "generate_private_key", _pooled_rsa_key)
+    monkeypatch.setattr(federation_helpers.rsa, "generate_private_key", _pooled_rsa_key)
