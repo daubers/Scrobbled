@@ -92,6 +92,24 @@ Imports run in the background in the `worker` service. The page shows progress, 
 
 Unlike live scrobbles, imports keep plays of any age. They still skip rows with no artist or track, and plays dated in the future. Plays already in your history are skipped, so importing again is safe.
 
+## Sharing on the fediverse (in development)
+
+Users can make their profile findable from Mastodon and other fediverse apps as `@name@<your UI host>`. Following, and posts (weekly summaries, milestones, now playing), are still being built; see `docs/design/activitypub.md`. Until then, profiles advertise follower approval, so a follow waits as a request rather than failing.
+
+It's **off unless the server enables it**, and then **off for each user** until they switch it on under **Sharing**. To enable it:
+
+1. Set these on the API and worker:
+   - `FEDERATION_ENABLED=1`
+   - `FEDERATION_DOMAIN`: the UI's host, e.g. `scrobble.example`
+   - `FEDERATION_BASE_URL`: the UI's origin, e.g. `https://scrobble.example`
+   - `FEDERATION_KEY_SECRET`: 32 or more random characters
+2. Give the UI container `API_INTERNAL_URL` (compose sets `http://api:8000`). It then forwards these paths to the API: `/.well-known/webfinger`, `/.well-known/nodeinfo`, `/.well-known/host-meta`, `/nodeinfo/`, `/users/`, `/inbox` and `/actor`.
+3. Serve the UI over HTTPS on that domain. Other servers only talk to HTTPS.
+
+Handles and actor URLs **can't change once anyone follows** a user, so choose the domain carefully.
+
+`FEDERATION_KEY_SECRET` encrypts each user's signing key. **Back it up, and never change it**: losing it means users' keys can't be read, and followers would have to follow again.
+
 ## Develop
 
 ```sh

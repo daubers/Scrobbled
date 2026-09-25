@@ -1,5 +1,7 @@
 # ActivityPub phase 1: discoverable profile
 
+**Status: done** on `feature/activitypub` (`98c6554` … `913ef67`). The one gap is the manual check with a real Mastodon account through a tunnel: it's still to do, and needs a public HTTPS address.
+
 This implements phase 1 of [activitypub.md](activitypub.md). Handles and actor URLs are on the **UI's domain**, and posts are **followers only by default** (a per-user setting).
 
 **Outcome:** once an operator enables federation, a user can switch on sharing, and searching `@alice@<UI host>` from Mastodon finds their profile. Following needs phase 2 (the inbox and deliveries). Until then the actor advertises `manuallyApprovesFollowers: true`, so a follow shows as a pending request rather than failing silently. With federation off, nothing changes.

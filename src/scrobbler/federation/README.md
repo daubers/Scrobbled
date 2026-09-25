@@ -31,6 +31,27 @@ or switched off without touching anything else. Design: `docs/design/activitypub
 | `FEDERATION_ENABLED` | `1` to turn federation on (default off) |
 | `FEDERATION_DOMAIN` | Handle domain, normally the web UI's host: users are `@name@<domain>`. **Permanent once anyone follows.** |
 | `FEDERATION_BASE_URL` | Public `https://` URL actors live under (`<base>/users/<name>`). Normally the web UI's origin, with the UI's nginx forwarding the ActivityPub paths to the API. |
+| `FEDERATION_KEY_SECRET` | 32+ characters; encrypts actors' private keys at rest (HKDF → Fernet). **Back it up; never change it.** |
+
+The UI container forwards these paths to the API when `API_INTERNAL_URL` is set (see `docker/ui-config.sh`):
+
+- `/.well-known/webfinger`, `/.well-known/nodeinfo`, `/.well-known/host-meta`
+- `/nodeinfo/`, `/users/`, `/inbox`, `/actor`
+
+Every ActivityPub ID is built from `FEDERATION_BASE_URL`, never from the incoming request.
+
+## Layout
+
+| Module | Holds |
+|---|---|
+| `protocol/` | Pure protocol code: media types, vocabulary, WebFinger, NodeInfo, host-meta |
+| `models.py` | `federation_settings` and `federation_keys` |
+| `keys.py` | Key pairs, created once and encrypted at rest |
+| `sharing.py` | Per-user settings, and who is sharing |
+| `web.py` | The endpoints other servers call |
+| `api.py` and `schemas.py` | `/api/v1/federation/*` for the web UI |
+| `openapi.py` | OpenAPI descriptions of `web.py`'s endpoints |
+| `metrics.py` | Federation's own Prometheus metrics |
 
 ## Migrations
 
