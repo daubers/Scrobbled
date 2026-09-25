@@ -35,6 +35,7 @@ FRAMEWORKS = (
     "marshmallow",
 )
 CORE_PUBLIC_SURFACE = (
+    "scrobbler.__version__",
     "scrobbler.events",
     "scrobbler.extensions",
     "scrobbler.worker",

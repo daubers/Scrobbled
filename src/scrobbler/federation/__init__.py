@@ -27,4 +27,7 @@ def init_app(app: Flask) -> None:
     if not config.enabled:
         return
     log.info("federation enabled: handles @user@%s, actors at %s", config.domain, config.base_url)
-    # Phase 1 onwards registers routes, event receivers and worker tasks here.
+
+    from scrobbler.federation import web
+
+    app.register_blueprint(web.bp)
