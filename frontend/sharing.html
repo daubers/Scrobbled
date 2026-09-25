@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sharing · Scrobbler</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%231c2330'/%3E%3Ccircle cx='8' cy='8' r='3.5' fill='%23f2a541'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="config.js"></script>
+    <script type="module" src="js/sharing.js"></script>
+  </head>
+  <body>
+    <header class="site-header" id="site-header"></header>
+    <main id="main">
+    <h1 class="page-title">Sharing</h1>
+    <p class="lede">Let people on Mastodon and other fediverse apps follow your listening.</p>
+    <div id="messages"></div>
+    <form id="sharing" class="sharing" hidden>
+      <div class="share-switch">
+        <input type="checkbox" id="enabled" name="enabled" role="switch">
+        <label for="enabled">Share my listening on the fediverse</label>
+      </div>
+      <div class="handle-panel" id="handle-panel" hidden>
+        <p class="display-status">Your fediverse handle</p>
+        <p class="approve-app handle" id="handle"></p>
+        <p class="muted">People can follow you by searching for this in their app. It can't be changed once people follow you.</p>
+        <p class="notice">Following arrives in a coming update. Until then people can find your profile, and follows wait as requests.</p>
+      </div>
+
+      <fieldset class="choices">
+        <legend>Who can see posts</legend>
+        <div class="choice">
+          <input type="radio" id="vis-followers" name="visibility" value="followers">
+          <label for="vis-followers"><strong>Only your followers</strong><span class="muted">Posts go to followers and nowhere else.</span></label>
+        </div>
+        <div class="choice">
+          <input type="radio" id="vis-unlisted" name="visibility" value="unlisted">
+          <label for="vis-unlisted"><strong>Anyone who visits your profile</strong><span class="muted">Kept out of public timelines.</span></label>
+        </div>
+        <div class="choice">
+          <input type="radio" id="vis-public" name="visibility" value="public">
+          <label for="vis-public"><strong>Everyone</strong><span class="muted">Including public timelines and search.</span></label>
+        </div>
+        <p class="hint">"Only your followers" is only as private as who can follow you. To choose who sees your posts, turn on <em>Approve followers</em> below.</p>
+      </fieldset>
+
+      <fieldset class="choices">
+        <legend>Followers and discovery</legend>
+        <div class="choice">
+          <input type="checkbox" id="manually_approves_followers" name="manually_approves_followers">
+          <label for="manually_approves_followers"><strong>Approve followers</strong><span class="muted">New followers need your OK.</span></label>
+        </div>
+        <div class="choice">
+          <input type="checkbox" id="discoverable" name="discoverable">
+          <label for="discoverable"><strong>List me in directories</strong><span class="muted">Fediverse apps may suggest your profile to others.</span></label>
+        </div>
+        <div class="choice">
+          <input type="checkbox" id="indexable" name="indexable">
+          <label for="indexable"><strong>Allow search</strong><span class="muted">Your public posts may be found by full-text search.</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="choices">
+        <legend>Profile</legend>
+        <div class="field">
+          <label for="display_name">Display name</label>
+          <input id="display_name" name="display_name" maxlength="100" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="bio">Bio</label>
+          <textarea id="bio" name="bio" maxlength="500" rows="3"></textarea>
+          <span class="hint">Shown on your fediverse profile. Plain text.</span>
+        </div>
+        <p class="muted" id="profile-link"></p>
+      </fieldset>
+
+      <div class="button-row save-row">
+        <button class="button" type="submit">Save sharing settings</button>
+        <span class="muted" id="save-status" role="status"></span>
+      </div>
+    </form>
+    </main>
+  </body>
+</html>

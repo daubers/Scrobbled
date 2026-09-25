@@ -20,6 +20,7 @@ export async function signedInPage(active) {
   const header = document.getElementById("site-header");
   replace(header, brand(), nav(active));
   const user = await api("/auth/me");
+  addSharingLink(header.querySelector("nav ul"), active);
   header.append(
     h(
       "div",
@@ -61,3 +62,35 @@ async function signOut() {
     location.href = "login.html";
   }
 }
+
+// "Sharing" only appears when the server federates. Remembered per tab.
+const FEDERATION_KEY = "scrobbler.federation";
+
+async function federationAvailable() {
+  try {
+    const cached = sessionStorage.getItem(FEDERATION_KEY);
+    if (cached !== null) return cached === "1";
+  } catch {
+    // Storage unavailable: just ask.
+  }
+  let available = false;
+  try {
+    await api("/federation/settings");
+    available = true;
+  } catch {
+    available = false;
+  }
+  try {
+    sessionStorage.setItem(FEDERATION_KEY, available ? "1" : "0");
+  } catch {
+    // Not remembered; asked again next page.
+  }
+  return available;
+}
+
+async function addSharingLink(list, active) {
+  if (!list || !(await federationAvailable())) return;
+  const href = "sharing.html";
+  list.append(h("li", {}, h("a", { href, "aria-current": href === active ? "page" : false }, "Sharing")));
+}
+
