@@ -37,7 +37,9 @@ def init_app(app: Flask) -> None:
     openapi.register(app, core_api)
 
     from scrobbler import worker
-    from scrobbler.federation import inbox
+    from scrobbler.federation import delivery, inbox
 
     worker.register_task(app, "federation.inbox", inbox.work_once)
+    worker.register_task(app, "federation.deliver", delivery.work_once)
     worker.register_periodic(app, "federation.inbox.maintenance", 300, inbox.maintenance)
+    worker.register_periodic(app, "federation.gauges", 30, delivery.maintenance)

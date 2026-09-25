@@ -1,6 +1,6 @@
 """Federation's own metrics (the core's HTTP metrics already cover rate/latency)."""
 
-from prometheus_client import Counter
+from prometheus_client import Counter, Gauge, Histogram
 
 lookups_total = Counter(
     "scrobbler_federation_lookups_total",
@@ -28,4 +28,26 @@ signatures_total = Counter(
     "scrobbler_federation_signatures_total",
     "HTTP signature checks (in) and signing (out), by scheme and result",
     ["direction", "scheme", "result"],
+)
+deliveries_total = Counter(
+    "scrobbler_federation_deliveries_total",
+    "Outgoing deliveries: delivered, retry, abandoned (gave up or refused) or gone (410)",
+    ["result"],
+)
+delivery_seconds = Histogram(
+    "scrobbler_federation_delivery_seconds",
+    "Time to deliver one activity to one inbox",
+    buckets=(0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 20),
+)
+queue = Gauge(
+    "scrobbler_federation_queue",
+    "Inbox items and deliveries by status (set by the worker)",
+    ["queue", "status"],
+    multiprocess_mode="max",
+)
+followers = Gauge(
+    "scrobbler_federation_followers",
+    "Followers across all users, by state (set by the worker)",
+    ["state"],
+    multiprocess_mode="max",
 )

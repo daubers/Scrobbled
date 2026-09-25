@@ -189,7 +189,8 @@ def sharing_user(fed_ctx, user):
 class FakeRemote:
     """A tiny HTTP server standing in for another fediverse server.
 
-    `routes[path] = (status, headers, body)`; `requests` records what it received.
+    `routes[path] = (status, headers, body)` or a function(request) returning that;
+    `requests` records what it received.
     """
 
     def __init__(self):
@@ -211,9 +212,9 @@ class FakeRemote:
                     "body": request.get_data(),
                 }
             )
-            status, headers, body = self.routes.get(request.path, (404, {}, b"not found"))
-            if callable(body):
-                body = body(request)
+            route = self.routes.get(request.path, (404, {}, b"not found"))
+            # A route is (status, headers, body), or a function of the request returning one
+            status, headers, body = route(request) if callable(route) else route
             if isinstance(body, dict | list):
                 import json as _json
 

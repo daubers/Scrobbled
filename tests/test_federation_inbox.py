@@ -127,7 +127,7 @@ def test_follow_is_accepted(fed_client, bob, sharing_user, scheme, metric_delta)
     assert accept.document["object"] == follow
     assert accept.document["to"] == [bob.uri]
     [delivery] = db.session.scalars(db.select(FederationDelivery)).all()
-    assert (delivery.inbox, delivery.status) == (f"{bob.uri}/inbox", "pending")
+    assert delivery.inbox == f"{bob.uri}/inbox"  # sending is covered in test_federation_delivery
     assert ok.delta == 1
 
 
