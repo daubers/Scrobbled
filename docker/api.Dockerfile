@@ -11,6 +11,7 @@ COPY src ./src
 RUN uv sync --locked --no-dev --no-editable
 
 FROM python:3.13-slim
+LABEL org.opencontainers.image.licenses="BSD-3-Clause"
 RUN useradd --system --uid 10001 --no-create-home scrobbler
 WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
