@@ -1,4 +1,4 @@
-# Core services:        docker compose up
+# Core services:        docker compose up   (db, api, worker, ui)
 # With monitoring:      docker compose --profile monitoring up
 # Published images:     SCROBBLER_IMAGE_TAG=main docker compose up --no-build
 name: scrobbler
@@ -33,12 +33,33 @@ services:
       UI_BASE_URL: ${UI_BASE_URL:-http://localhost:8080}
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
       FORWARDED_ALLOW_IPS: "*"
+      LASTFM_API_KEY: ${LASTFM_API_KEY:-}
     ports:
       - "${API_PORT:-5050}:8000"
     expose:
       - "9100"  # metrics: internal network only
     depends_on:
       db:
+        condition: service_healthy
+
+  # Processes history imports (uploaded exports and pulls from Last.fm).
+  worker:
+    image: ${SCROBBLER_REGISTRY:-pkgs.daubney.dev/scrobbler}/scrobbler-api:${SCROBBLER_IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    command: ["flask", "--app", "scrobbler", "imports", "worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://scrobbler:${POSTGRES_PASSWORD:-scrobbler}@db:5432/scrobbler
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      LASTFM_API_KEY: ${LASTFM_API_KEY:-}
+      RUN_MIGRATIONS: "0"  # the api service applies them
+    expose:
+      - "9101"  # metrics: internal network only
+    healthcheck:
+      disable: true
+    depends_on:
+      api:
         condition: service_healthy
 
   ui:

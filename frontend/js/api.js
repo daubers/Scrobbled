@@ -87,3 +87,46 @@ export function describeError(error) {
   }
   return error.message;
 }
+
+// Multipart upload with progress (fetch can't report upload progress).
+export function upload(path, formData, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${apiBase}/api/v1${path}`);
+    const token = getToken();
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) onProgress?.(event.loaded / event.total);
+    });
+    xhr.addEventListener("error", () =>
+      reject(new ApiError(0, "network", `Can't reach the Scrobbler API at ${apiBase}. Check that it's running.`)),
+    );
+    xhr.addEventListener("load", () => {
+      let data = null;
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch {
+        // Not JSON (e.g. a proxy's error page)
+      }
+      if (xhr.status === 401) {
+        setToken(null);
+        redirectToLogin();
+        return;
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(data);
+        return;
+      }
+      const error = data?.error ?? {};
+      reject(
+        new ApiError(
+          xhr.status,
+          error.code ?? "error",
+          error.message ?? (xhr.status === 413 ? "That file is too large." : `Upload failed (${xhr.status}).`),
+          error.details,
+        ),
+      );
+    });
+    xhr.send(formData);
+  });
+}

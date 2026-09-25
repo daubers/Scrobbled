@@ -57,6 +57,22 @@ groups:
           summary: Every pooled database connection is in use
           description: Workers are running on overflow connections; requests may queue.
 
+      - alert: ImportWorkerDown
+        expr: up{job="scrobbler-worker"} == 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: The import worker isn't running
+          description: History imports will wait until it's back.
+
+      - alert: ImportJobsWaiting
+        expr: max(scrobbler_import_jobs{status="pending"}) > 0 and max(scrobbler_import_jobs{status="running"}) == 0
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: Imports have been waiting for 15 minutes with nothing running
+          description: The import worker is probably stopped or stuck.
+
       - alert: PostgresDown
         expr: pg_up == 0
         for: 2m

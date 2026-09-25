@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Import · Scrobbler</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%231c2330'/%3E%3Ccircle cx='8' cy='8' r='3.5' fill='%23f2a541'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="config.js"></script>
+    <script type="module" src="js/import.js"></script>
+  </head>
+  <body>
+    <header class="site-header" id="site-header"></header>
+    <main id="main">
+    <h1 class="page-title">Import history</h1>
+    <p class="lede">Bring in your Last.fm history. Plays that are already here are skipped, so importing the same history twice is safe.</p>
+    <div id="messages"></div>
+    <div class="import-sources">
+      <section aria-labelledby="file-title">
+        <h2 id="file-title">From an export file</h2>
+        <p class="muted">A CSV from lastfm-to-csv, any CSV with artist, track and date columns, or a JSON export of your scrobbles. Gzipped files work too.</p>
+        <form id="file-form" class="stacked-form">
+          <div class="field">
+            <label for="file">Export file</label>
+            <input id="file" name="file" type="file" accept=".csv,.tsv,.txt,.json,.gz" required>
+            <span class="hint" id="file-limit"></span>
+          </div>
+          <div class="upload-progress" id="upload-progress" hidden>
+            <div class="bar" aria-hidden="true"><div class="bar-fill"></div></div>
+            <span class="muted" role="status"></span>
+          </div>
+          <button class="button" type="submit">Upload and import</button>
+        </form>
+      </section>
+      <section aria-labelledby="lastfm-title" id="lastfm-section" hidden>
+        <h2 id="lastfm-title">Straight from Last.fm</h2>
+        <p class="muted">Copies the public scrobble history of a Last.fm account. Large histories take a few minutes; you can leave this page while it runs.</p>
+        <form id="lastfm-form" class="stacked-form">
+          <div class="field">
+            <label for="lastfm-username">Last.fm username</label>
+            <input id="lastfm-username" name="username" required maxlength="64" autocomplete="off" spellcheck="false">
+          </div>
+          <button class="button" type="submit">Import from Last.fm</button>
+        </form>
+      </section>
+    </div>
+    <section aria-labelledby="jobs-title">
+      <h2 id="jobs-title" class="section-head">Your imports</h2>
+      <ul class="rows" id="jobs"></ul>
+    </section>
+    </main>
+  </body>
+</html>

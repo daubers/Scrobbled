@@ -779,3 +779,68 @@ input {
     transition: width 1s linear;
   }
 }
+
+/* ---- Import --------------------------------------------------------------- */
+.import-sources {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 2rem 3rem;
+  margin-bottom: 3rem;
+}
+
+.import-sources section + section {
+  margin-top: 0;
+}
+
+.import-sources h2 {
+  margin-bottom: 0.4rem;
+}
+
+.import-sources .muted {
+  margin-bottom: 1.1rem;
+}
+
+.stacked-form .button {
+  margin-top: 0.25rem;
+}
+
+.field input[type="file"] {
+  padding: 0.45rem;
+}
+
+.bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bar);
+  overflow: hidden;
+  margin: 0.6rem 0;
+}
+
+.bar-fill {
+  height: 100%;
+  width: 0;
+  background: var(--slate);
+}
+
+.upload-progress {
+  margin-bottom: 1rem;
+}
+
+.import-status {
+  margin-top: 0.35rem;
+}
+
+.import-running .bar-fill {
+  background: var(--ok);
+}
+
+.import-date {
+  font-size: var(--step--1);
+  margin-top: 0.25rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bar-fill {
+    transition: width 0.4s ease-out;
+  }
+}

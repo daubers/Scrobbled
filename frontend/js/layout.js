@@ -8,6 +8,7 @@ const NAV = [
   ["history.html", "History"],
   ["apps.html", "Apps"],
   ["sessions.html", "Sessions"],
+  ["import.html", "Import"],
 ];
 
 // Renders the header and returns the signed-in user (redirecting if there isn't one).

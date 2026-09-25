@@ -15,9 +15,10 @@ RUN useradd --system --uid 10001 --no-create-home scrobbler
 WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
 COPY gunicorn.conf.py docker/api-entrypoint.sh ./
+# PROMETHEUS_MULTIPROC_DIR is set by gunicorn.conf.py for the API only: prometheus_client
+# enters multiprocess mode whenever it's set, which other commands (the worker) don't want.
 ENV PATH=/app/.venv/bin:$PATH \
     PYTHONUNBUFFERED=1 \
-    PROMETHEUS_MULTIPROC_DIR=/tmp/scrobbler-metrics \
     BIND=0.0.0.0:8000 \
     METRICS_PORT=9100 \
     OPENAPI_DOCS_ENABLED=1

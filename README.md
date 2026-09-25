@@ -12,13 +12,14 @@ Prometheus ◄── API :9100/metrics, postgres-exporter ──► Grafana
 - **API** (`src/scrobbler/`): Flask under gunicorn. It is API-only and serves no pages.
 - **Web UI** (`frontend/`): plain HTML, CSS and JavaScript with no build step. Host it anywhere static files can be served.
 - **Docs**: OpenAPI at `/api/openapi.json`, Swagger UI at `/api/docs` and ReDoc at `/api/redoc`. A copy of the spec is committed at `docs/openapi.json`.
+- **Import worker**: `flask imports worker` imports Last.fm history in the background, from export files or straight from Last.fm.
 - **Monitoring**: Prometheus metrics, four provisioned Grafana dashboards, and alert rules.
 
 ## Run it
 
 ```sh
 cp .env.example .env                      # then set SECRET_KEY and POSTGRES_PASSWORD
-docker compose up -d                      # db, api (:5050), ui (:8080)
+docker compose up -d                      # db, api (:5050), worker, ui (:8080)
 docker compose --profile monitoring up -d # + Prometheus (:9090), Grafana (:3000)
 ```
 
@@ -44,6 +45,9 @@ The images are `pkgs.daubney.dev/scrobbler/scrobbler-api` and `pkgs.daubney.dev/
 | `METRICS_PORT` | api | `9100` | Prometheus metrics port (keep it off the public network) |
 | `WEB_CONCURRENCY` | api | `2` | gunicorn workers |
 | `RUN_MIGRATIONS` | api image | `1` | Apply database migrations on start |
+| `LASTFM_API_KEY` | api, worker | *(unset)* | Enables importing straight from Last.fm ([get a key](https://www.last.fm/api/account/create)) |
+| `IMPORT_MAX_BYTES` | api | 200 MB | Largest export file accepted |
+| `IMPORT_WORKER_METRICS_PORT` | worker | `9101` | The worker's Prometheus metrics port |
 | `API_BASE_URL` | ui image | `http://localhost:5050` | API location, written into `config.js` and the CSP |
 
 In `docker compose` the host ports are set with `DB_PORT`, `API_PORT`, `UI_PORT`, `PROMETHEUS_PORT` and `GRAFANA_PORT`.
@@ -73,6 +77,21 @@ Supported methods:
 
 Scrobbles are ignored (not rejected) if the artist or track is empty, or if the timestamp is more than 14 days old or more than 5 minutes in the future. Sending the same scrobble again is accepted and stored once, so client retries are safe.
 
+## Importing Last.fm history
+
+Open **Import** in the web UI. You can import from:
+
+- **An export file**:
+  - CSV from [lastfm-to-csv](https://benjaminbenben.com/lastfm-to-csv/), with no header row and artist, album, track and date columns.
+  - Any CSV or TSV with a header row naming artist, track and a date or Unix-time column. Comma, semicolon and tab delimiters all work.
+  - A JSON export of `user.getRecentTracks` pages (such as lastfm.ghan.nl's), a single `recenttracks` response, or a flat list of tracks.
+  - Files can be gzipped.
+- **Last.fm directly**: enter a Last.fm username and the worker pages through that account's public history. This option only appears when the server has `LASTFM_API_KEY` set.
+
+Imports run in the background in the `worker` service. The page shows progress, and an import can be cancelled.
+
+Unlike live scrobbles, imports keep plays of any age. They still skip rows with no artist or track, and plays dated in the future. Plays already in your history are skipped, so importing again is safe.
+
 ## Develop
 
 ```sh
@@ -81,6 +100,7 @@ uv sync
 uv run flask --app scrobbler db upgrade
 uv run flask --app scrobbler run --port 5050 # API (port 5000 is taken by AirPlay on macOS)
 python -m http.server 8080 -d frontend       # UI
+uv run flask --app scrobbler imports worker  # process imports
 uv run pytest                                # needs TEST_DATABASE_URL (see .env.example)
 uv run ruff check && uv run ruff format --check
 ```
@@ -113,6 +133,7 @@ With the `monitoring` profile, Grafana (admin password `GRAFANA_ADMIN_PASSWORD`)
 Alert rules live in `deploy/prometheus/alerts.yml`:
 
 - API down
+- import worker down, or imports left waiting
 - 5xx ratio
 - p95 latency
 - authentication-failure spike
