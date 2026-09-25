@@ -76,3 +76,7 @@ class TestConfig(Config):
         "postgresql+psycopg://scrobbler:scrobbler@localhost:5432/scrobbler_test",
     )
     START_METRICS_SERVER = False
+    # Tests never inherit optional features from a developer's .env or environment;
+    # tests that need them turn them on explicitly.
+    LASTFM_API_KEY = ""
+    FEDERATION_ENABLED = "0"
