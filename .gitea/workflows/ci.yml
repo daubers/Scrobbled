@@ -14,6 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: https://github.com/astral-sh/setup-uv@v6
+        with:
+          # Exact version: avoids an unauthenticated GitHub API lookup for "latest".
+          version: "0.7.21"
       - run: uv sync --locked
       - run: uv run ruff check
       - run: uv run ruff format --check
@@ -38,6 +41,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: https://github.com/astral-sh/setup-uv@v6
+        with:
+          # Exact version: avoids an unauthenticated GitHub API lookup for "latest".
+          version: "0.7.21"
       - run: uv sync --locked
       - name: Migrations are in sync with the models
         run: |
