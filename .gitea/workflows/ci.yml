@@ -137,9 +137,11 @@ jobs:
           files="docs/openapi.json docker-compose.yml deploy/prometheus/prometheus.yml deploy/prometheus/alerts.yml
                  deploy/grafana/provisioning/datasources/prometheus.yml deploy/grafana/provisioning/dashboards/dashboards.yml
                  $(ls deploy/grafana/dashboards/*.json)"
+          # POST creates or overwrites (ProGet rejects PUT to an existing path).
           for dir in $dirs; do
             for file in $files; do
-              curl -fsS -X PUT -H "X-ApiKey: $API_KEY" --data-binary "@$file" "$BASE/$dir/$file"
+              case "$file" in *.json) type=application/json ;; *) type=application/yaml ;; esac
+              curl -fsS -X POST -H "X-ApiKey: $API_KEY" -H "Content-Type: $type" --data-binary "@$file" "$BASE/$dir/$file"
               echo "uploaded $dir/$file"
             done
           done
