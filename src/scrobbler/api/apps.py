@@ -6,7 +6,7 @@ from scrobbler.schemas import ApiAppCreateSchema, ApiAppSchema, ErrorSchema
 from scrobbler.services import accounts
 
 blp = Blueprint(
-    "ui_apps",
+    "Apps",
     __name__,
     description=(
         "API applications. Each has an API key and shared secret that a scrobbling "

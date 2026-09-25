@@ -6,7 +6,7 @@ from scrobbler.api.decorators import authenticated, bearer_token
 from scrobbler.schemas import ErrorSchema, LoginSchema, RegisterSchema, TokenSchema, UserSchema
 from scrobbler.services import accounts
 
-blp = Blueprint("ui_auth", __name__, description="Web UI accounts and login")
+blp = Blueprint("Auth", __name__, description="Web UI accounts and login")
 
 
 @blp.route("/register", methods=["POST"])

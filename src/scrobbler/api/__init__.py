@@ -50,3 +50,7 @@ def init_app(app: Flask) -> None:
     api.register_blueprint(sessions.blp, url_prefix="/api/v1/sessions")
     api.register_blueprint(tokens.blp, url_prefix="/api/v1/tokens")
     api.register_blueprint(stats.blp, url_prefix="/api/v1/me")
+
+    from scrobbler.openapi import lastfm
+
+    lastfm.register(app, api)

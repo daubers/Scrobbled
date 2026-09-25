@@ -14,7 +14,7 @@ from scrobbler.schemas import (
 )
 from scrobbler.services import scrobbles, stats
 
-blp = Blueprint("ui_stats", __name__, description="Your listening history and statistics")
+blp = Blueprint("Stats", __name__, description="Your listening history and statistics")
 
 TOP_KINDS = {
     "artists": stats.top_artists,

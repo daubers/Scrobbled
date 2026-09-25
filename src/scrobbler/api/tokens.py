@@ -6,7 +6,7 @@ from scrobbler.schemas import ApproveTokenSchema, AuthTokenInfoSchema, ErrorSche
 from scrobbler.services import accounts
 
 blp = Blueprint(
-    "ui_tokens",
+    "Tokens",
     __name__,
     description=(
         "Approve Last.fm desktop-auth tokens. Clients send the user to `/api/auth/`, "

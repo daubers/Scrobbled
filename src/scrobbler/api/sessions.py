@@ -6,7 +6,7 @@ from scrobbler.schemas import ErrorSchema, SessionSchema
 from scrobbler.services import accounts
 
 blp = Blueprint(
-    "ui_sessions",
+    "Sessions",
     __name__,
     description="Last.fm session keys issued to scrobbling clients on your behalf.",
 )

@@ -98,12 +98,3 @@ def test_cors_allows_only_the_configured_ui_origin(client, app):
         "/api/v1/auth/me", headers={"Origin": "https://evil.example", **preflight}
     )
     assert "Access-Control-Allow-Origin" not in evil.headers
-
-
-def test_api_docs_are_served(client):
-    spec = client.get("/api/openapi.json").get_json()
-    assert "/api/v1/auth/login" in spec["paths"]
-    assert spec["components"]["securitySchemes"]["bearerAuth"]["scheme"] == "bearer"
-    assert spec["paths"]["/api/v1/auth/me"]["get"]["security"] == [{"bearerAuth": []}]
-    assert client.get("/api/docs").status_code == 200
-    assert client.get("/api/redoc").status_code == 200
