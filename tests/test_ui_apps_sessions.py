@@ -27,9 +27,14 @@ def test_revoked_session_key_stops_working(client, auth, api_app, session_key):
 
     assert client.delete(f"/api/v1/sessions/{sessions[0]['id']}", headers=auth).status_code == 204
     params = signed(
-        {"method": "track.updateNowPlaying", "api_key": api_app.api_key, "sk": session_key},
+        {
+            "method": "track.updateNowPlaying",
+            "api_key": api_app.api_key,
+            "sk": session_key,
+            "artist": "A",
+            "track": "T",
+        },
         api_app.shared_secret,
     )
-    # The method is registered in a later step; the session check runs first either way.
     response = client.post("/2.0/", data={**params, "format": "json"})
-    assert response.get_json()["error"] in (3, 9)
+    assert response.get_json()["error"] == 9

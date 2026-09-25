@@ -51,7 +51,12 @@ def _authenticate(method: LastfmMethod, params: dict[str, str], fmt: str) -> Cal
             raise LastFMError(errors.INVALID_SESSION_KEY)
         call.user = session.user
 
-    missing = [p.name for p in method.params if p.required and not params.get(p.name)]
+    # Array params (artist[i]) are validated by the handler, which knows the batch shape.
+    missing = [
+        p.name
+        for p in method.params
+        if p.required and not p.name.endswith("[i]") and not params.get(p.name)
+    ]
     if missing:
         raise LastFMError(
             errors.INVALID_PARAMETERS, f"Missing required parameter: {', '.join(missing)}"
