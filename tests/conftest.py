@@ -154,6 +154,8 @@ class FederatedTestConfig(_TestConfig):
     FEDERATION_DOMAIN = "scrobble.test"
     FEDERATION_BASE_URL = "https://scrobble.test"
     FEDERATION_KEY_SECRET = "test-only-federation-key-secret-0123456789"
+    # Lets tests federate with servers on 127.0.0.1 over http (allowed for .test only).
+    FEDERATION_INSECURE_TESTING = "1"
 
 
 @pytest.fixture(scope="session")
@@ -182,3 +184,61 @@ def sharing_user(fed_ctx, user):
 
     sharing.update(user.id, {"enabled": True, "display_name": "Alice", "bio": "Listening."})
     return user
+
+
+class FakeRemote:
+    """A tiny HTTP server standing in for another fediverse server.
+
+    `routes[path] = (status, headers, body)`; `requests` records what it received.
+    """
+
+    def __init__(self):
+        import threading
+
+        from werkzeug.serving import make_server
+        from werkzeug.wrappers import Request, Response
+
+        self.routes: dict = {}
+        self.requests: list = []
+
+        @Request.application
+        def app(request):
+            self.requests.append(
+                {
+                    "method": request.method,
+                    "path": request.full_path.rstrip("?"),
+                    "headers": dict(request.headers),
+                    "body": request.get_data(),
+                }
+            )
+            status, headers, body = self.routes.get(request.path, (404, {}, b"not found"))
+            if callable(body):
+                body = body(request)
+            if isinstance(body, dict | list):
+                import json as _json
+
+                body, headers = (
+                    _json.dumps(body).encode(),
+                    {"Content-Type": "application/activity+json", **headers},
+                )
+            return Response(body, status=status, headers=headers)
+
+        self.server = make_server("127.0.0.1", 0, app, threaded=True)
+        self.base = f"http://127.0.0.1:{self.server.server_port}"
+        # A short poll interval: shutdown() waits for the next poll
+        threading.Thread(
+            target=self.server.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True
+        ).start()
+
+    def url(self, path: str) -> str:
+        return self.base + path
+
+    def close(self):
+        self.server.shutdown()
+
+
+@pytest.fixture
+def remote():
+    server = FakeRemote()
+    yield server
+    server.close()

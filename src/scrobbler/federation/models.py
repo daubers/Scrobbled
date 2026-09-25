@@ -46,3 +46,29 @@ class FederationKey(db.Model):
     public_key_pem: Mapped[str] = mapped_column(Text)
     private_key_encrypted: Mapped[bytes] = mapped_column(LargeBinary)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class FederationRemoteActor(db.Model):
+    """A cached copy of another server's actor (who follows us, and their key)."""
+
+    __tablename__ = "federation_remote_actors"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    uri: Mapped[str] = mapped_column(String(2048), unique=True)
+    host: Mapped[str] = mapped_column(String(255), index=True)
+    inbox: Mapped[str] = mapped_column(String(2048))
+    shared_inbox: Mapped[str | None] = mapped_column(String(2048))
+    username: Mapped[str | None] = mapped_column(String(255))  # preferredUsername
+    display_name: Mapped[str | None] = mapped_column(String(255))
+    public_key_id: Mapped[str] = mapped_column(String(2048), index=True)
+    public_key_pem: Mapped[str] = mapped_column(Text)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    gone: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    @property
+    def handle(self) -> str:
+        return f"@{self.username or '?'}@{self.host}"
+
+    @property
+    def delivery_inbox(self) -> str:
+        return self.shared_inbox or self.inbox
