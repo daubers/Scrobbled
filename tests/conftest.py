@@ -142,3 +142,43 @@ def ui_token(user):
 def auth(ui_token):
     """Authorization headers for the default user."""
     return {"Authorization": f"Bearer {ui_token}"}
+
+
+# --- Federation ---------------------------------------------------------------------
+
+from scrobbler.config import TestConfig as _TestConfig  # noqa: E402
+
+
+class FederatedTestConfig(_TestConfig):
+    FEDERATION_ENABLED = "1"
+    FEDERATION_DOMAIN = "scrobble.test"
+    FEDERATION_BASE_URL = "https://scrobble.test"
+    FEDERATION_KEY_SECRET = "test-only-federation-key-secret-0123456789"
+
+
+@pytest.fixture(scope="session")
+def fed_app(app):
+    """A second app, with federation on, sharing the test database."""
+    return create_app(FederatedTestConfig)
+
+
+@pytest.fixture
+def fed_client(fed_app):
+    return fed_app.test_client()
+
+
+@pytest.fixture
+def fed_ctx(fed_app):
+    """Run the test inside the federation app's context (for services using current_app)."""
+    with fed_app.app_context():
+        yield
+        db.session.remove()
+
+
+@pytest.fixture
+def sharing_user(fed_ctx, user):
+    """The default user, with sharing switched on."""
+    from scrobbler.federation import sharing
+
+    sharing.update(user.id, {"enabled": True, "display_name": "Alice", "bio": "Listening."})
+    return user

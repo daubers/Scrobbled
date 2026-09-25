@@ -168,7 +168,8 @@ def test_nothing_is_registered_when_federation_is_off(app):
 class _Enabled(TestConfig):
     FEDERATION_ENABLED = "1"
     FEDERATION_DOMAIN = "scrobble.example"
-    FEDERATION_BASE_URL = "https://api.scrobble.example"
+    FEDERATION_BASE_URL = "https://scrobble.example"
+    FEDERATION_KEY_SECRET = "x" * 32
 
 
 @pytest.mark.parametrize(
@@ -178,6 +179,7 @@ class _Enabled(TestConfig):
         ({"FEDERATION_DOMAIN": "https://scrobble.example"}, "FEDERATION_DOMAIN"),
         ({"FEDERATION_BASE_URL": "http://api.scrobble.example"}, "FEDERATION_BASE_URL"),
         ({"FEDERATION_BASE_URL": ""}, "FEDERATION_BASE_URL"),
+        ({"FEDERATION_KEY_SECRET": "too-short"}, "FEDERATION_KEY_SECRET"),
     ],
 )
 def test_enabling_federation_requires_valid_settings(overrides, message):
@@ -192,5 +194,6 @@ def test_federation_can_be_enabled():
     assert (config.enabled, config.domain, config.base_url) == (
         True,
         "scrobble.example",
-        "https://api.scrobble.example",
+        "https://scrobble.example",
     )
+    assert "x" * 32 not in repr(config)

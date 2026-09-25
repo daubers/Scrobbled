@@ -17,6 +17,7 @@ class FederationConfig:
     enabled: bool = False
     domain: str = ""  # the handle's domain: @user@<domain>
     base_url: str = ""  # where actors live: <base_url>/users/<username>
+    key_secret: str = ""  # encrypts actors' private keys at rest
 
     @classmethod
     def from_mapping(cls, config: Mapping) -> "FederationConfig":
@@ -30,6 +31,7 @@ class FederationConfig:
             enabled=_flag(get("FEDERATION_ENABLED", "0")),
             domain=get("FEDERATION_DOMAIN").strip().lower(),
             base_url=get("FEDERATION_BASE_URL").strip().rstrip("/"),
+            key_secret=get("FEDERATION_KEY_SECRET"),
         )
         result.validate()
         return result
@@ -47,5 +49,17 @@ class FederationConfig:
         if url.scheme != "https" or not url.netloc or url.query or url.fragment:
             raise FederationConfigError(
                 "FEDERATION_BASE_URL must be the public https:// URL the API is served at "
-                "(e.g. https://api.scrobble.example) when FEDERATION_ENABLED is on."
+                "(e.g. https://scrobble.example) when FEDERATION_ENABLED is on."
             )
+        if len(self.key_secret) < 32:
+            raise FederationConfigError(
+                "FEDERATION_KEY_SECRET must be at least 32 characters when FEDERATION_ENABLED "
+                "is on. It encrypts actors' private keys; keep it safe and never change it "
+                "(e.g. python -c 'import secrets; print(secrets.token_urlsafe(48))')."
+            )
+
+    def __repr__(self) -> str:  # never print the secret
+        return (
+            f"FederationConfig(enabled={self.enabled}, domain={self.domain!r}, "
+            f"base_url={self.base_url!r}, key_secret=***)"
+        )

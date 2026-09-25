@@ -18,6 +18,10 @@ log = logging.getLogger(__name__)
 
 
 def init_app(app: Flask) -> None:
+    # Tables are always part of the schema (migrations run regardless), so the models
+    # are always registered; "off" means no routes, receivers or tasks.
+    from scrobbler.federation import models  # noqa: F401
+
     config = FederationConfig.from_mapping(app.config)
     app.extensions["federation"] = config
     if not config.enabled:
