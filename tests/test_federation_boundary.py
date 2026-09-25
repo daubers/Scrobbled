@@ -167,7 +167,7 @@ def test_nothing_is_registered_when_federation_is_off(app):
     assert views == []
     for signal in (events.scrobbles_stored, events.now_playing_changed, events.import_finished):
         assert not any(_from_federation(r) for r in signal.receivers_for(None))
-    assert not any(name.startswith("federation") for name in worker.registered())
+    assert not any(name.startswith("federation") for name in worker.registered(app))
 
 
 class _Enabled(TestConfig):

@@ -3,18 +3,43 @@ import pytest
 from scrobbler import worker
 
 
+class _Registry:
+    """The worker module, bound to the test app, with an emptied task registry."""
+
+    def __init__(self, app):
+        self.app = app
+
+    def register_task(self, name, fn):
+        worker.register_task(self.app, name, fn)
+
+    def register_periodic(self, name, every, fn):
+        worker.register_periodic(self.app, name, every, fn)
+
+    def run(self, **kwargs):
+        worker.run(**kwargs)
+
+
 @pytest.fixture
 def tasks(app):
-    """An empty task registry for the test, restored afterwards."""
-    saved = dict(worker._tasks)
-    worker._tasks.clear()
-    yield worker
-    worker._tasks.clear()
-    worker._tasks.update(saved)
+    """An empty task registry for the test app, restored afterwards."""
+    registry = worker.tasks(app)
+    saved = dict(registry)
+    registry.clear()
+    yield _Registry(app)
+    registry.clear()
+    registry.update(saved)
 
 
 def test_imports_are_registered_by_the_app(app):
-    assert {"imports", "imports.requeue_stalled"} <= set(worker.registered())
+    assert {"imports", "imports.requeue_stalled"} <= set(worker.registered(app))
+
+
+def test_apps_have_their_own_tasks(app, fed_app):
+    worker.register_task(fed_app, "only-on-fed-app", lambda: False)
+    try:
+        assert "only-on-fed-app" not in worker.registered(app)
+    finally:
+        worker.tasks(fed_app).pop("only-on-fed-app")
 
 
 def test_queue_tasks_run_until_there_is_no_work(tasks, metric_delta):

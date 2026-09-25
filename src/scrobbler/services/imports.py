@@ -580,8 +580,8 @@ def work_once() -> bool:
     return True
 
 
-def register_worker_tasks() -> None:
+def register_worker_tasks(app) -> None:
     from scrobbler import worker
 
-    worker.register_task("imports", work_once)
-    worker.register_periodic("imports.requeue_stalled", 60, requeue_stalled)
+    worker.register_task(app, "imports", work_once)
+    worker.register_periodic(app, "imports.requeue_stalled", 60, requeue_stalled)

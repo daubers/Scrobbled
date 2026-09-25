@@ -1,10 +1,11 @@
 """The background worker: runs tasks that modules register (`flask worker`).
 
-Modules register work at app start-up; the worker itself knows nothing about them.
+Modules register work on an app at start-up; the worker itself knows nothing about them.
+Each app has its own tasks, so apps with different modules enabled never share them.
 
-    register_task(name, fn)                 fn() -> bool: True if it did some work.
-                                            Called repeatedly while there's work.
-    register_periodic(name, seconds, fn)    fn() every `seconds` (and once at start).
+    register_task(app, name, fn)                fn() -> bool: True if it did some work.
+                                                Called repeatedly while there's work.
+    register_periodic(app, name, seconds, fn)   fn() every `seconds` (and once at start).
 
 A task that raises is logged, counted and rolled back; the other tasks keep running.
 """
@@ -13,6 +14,8 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+
+from flask import Flask, current_app
 
 from scrobbler import metrics
 from scrobbler.extensions import db
@@ -28,19 +31,22 @@ class _Task:
     next_run: float = 0.0  # monotonic time; 0 = run at the first opportunity
 
 
-_tasks: dict[str, _Task] = {}
+def tasks(app: Flask | None = None) -> dict[str, _Task]:
+    return (app or current_app).extensions.setdefault("worker_tasks", {})
 
 
-def register_task(name: str, fn: Callable[[], bool]) -> None:
-    _tasks[name] = _Task(name, fn)
+def register_task(app: Flask, name: str, fn: Callable[[], bool]) -> None:
+    tasks(app)[name] = _Task(name, fn)
 
 
-def register_periodic(name: str, every_seconds: float, fn: Callable[[], object]) -> None:
-    _tasks[name] = _Task(name, fn, every=every_seconds)
+def register_periodic(
+    app: Flask, name: str, every_seconds: float, fn: Callable[[], object]
+) -> None:
+    tasks(app)[name] = _Task(name, fn, every=every_seconds)
 
 
-def registered() -> list[str]:
-    return sorted(_tasks)
+def registered(app: Flask | None = None) -> list[str]:
+    return sorted(tasks(app))
 
 
 def _call(task: _Task) -> bool:
@@ -61,7 +67,7 @@ def run_once() -> bool:
     task did work (so there may be more waiting)."""
     now = time.monotonic()
     worked = False
-    for task in list(_tasks.values()):
+    for task in list(tasks().values()):
         if task.every is not None:
             if now >= task.next_run:
                 task.next_run = now + task.every
@@ -73,7 +79,7 @@ def run_once() -> bool:
 
 def run(poll_seconds: float = 2.0, once: bool = False) -> None:
     """Run until stopped. With once=True, run until there's no more work, then return."""
-    for task in _tasks.values():
+    for task in tasks().values():
         task.next_run = 0.0
     while True:
         if run_once():

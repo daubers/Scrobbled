@@ -46,7 +46,7 @@ def create_app(config_object=None):
 
     app.cli.add_command(worker_command)
     app.cli.add_command(imports_cli)
-    import_service.register_worker_tasks()
+    import_service.register_worker_tasks(app)
 
     from scrobbler.metrics import db as db_metrics
 
