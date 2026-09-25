@@ -18,6 +18,10 @@ def create_app(config_object=None):
     migrate.init_app(app, db, directory=_migrations_dir())
     http_metrics.init_app(app)
 
+    from scrobbler.lastfm import bp as lastfm_bp
+
+    app.register_blueprint(lastfm_bp)
+
     if app.config["START_METRICS_SERVER"]:
         from scrobbler.metrics.server import start_metrics_server
 
