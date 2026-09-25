@@ -97,7 +97,7 @@ Unlike live scrobbles, imports keep plays of any age. They still skip rows with 
 ```sh
 docker compose up -d db                      # Postgres with a scrobbler_test database
 uv sync
-uv run flask --app scrobbler db upgrade
+uv run flask --app scrobbler db upgrade heads
 uv run flask --app scrobbler run --port 5050 # API (port 5000 is taken by AirPlay on macOS)
 python -m http.server 8080 -d frontend       # UI
 uv run flask --app scrobbler worker          # background work (imports, …)
@@ -105,7 +105,7 @@ uv run pytest                                # needs TEST_DATABASE_URL (see .env
 uv run ruff check && uv run ruff format --check
 ```
 
-- **Migrations**: after changing `models.py`, run `uv run flask --app scrobbler db migrate -m "…"`. CI fails if the models and migrations disagree.
+- **Migrations** come in two branches, `core` and `federation`. After changing core models, run `uv run flask --app scrobbler db migrate --head core@head -m "…"`; federation tables use `--head federation@head` (see `src/scrobbler/federation/README.md`). Apply them with `db upgrade heads`. CI fails if the models and migrations disagree.
 - **API docs**: after changing an endpoint, run `uv run flask --app scrobbler openapi write --format=json docs/openapi.json`. A test fails if the committed spec is stale. Every route has to appear in the spec, and every UI route has to declare bearer auth.
 - **Demo traffic**: `uv run python scripts/generate_traffic.py --minutes 5` sends a realistic mix of scrobbles and errors, so the dashboards have something to show.
 

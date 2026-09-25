@@ -52,7 +52,7 @@ jobs:
       - run: uv sync --locked
       - name: Migrations are in sync with the models
         run: |
-          uv run flask --app scrobbler db upgrade
+          uv run flask --app scrobbler db upgrade heads
           uv run flask --app scrobbler db check
       - run: uv run pytest
 

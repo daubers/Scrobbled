@@ -30,6 +30,10 @@ def create_app(config_object=None):
 
     app.register_blueprint(lastfm_bp)
     api.init_app(app)
+
+    from scrobbler import federation  # the only place the core touches federation
+
+    federation.init_app(app)
     CORS(
         app,
         resources={r"/api/v1/*": {"origins": app.config["CORS_ORIGINS"]}},

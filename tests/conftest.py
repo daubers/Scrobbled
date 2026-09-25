@@ -13,7 +13,7 @@ def app():
     app = create_app(TestConfig)
     with app.app_context():
         downgrade(revision="base")  # clean slate if a previous run was interrupted
-        upgrade()
+        upgrade(revision="heads")  # core and federation branches
         yield app
         db.session.remove()
         downgrade(revision="base")
