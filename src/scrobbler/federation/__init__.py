@@ -28,6 +28,10 @@ def init_app(app: Flask) -> None:
         return
     log.info("federation enabled: handles @user@%s, actors at %s", config.domain, config.base_url)
 
-    from scrobbler.federation import web
+    from scrobbler.api import get_api
+    from scrobbler.federation import api, openapi, web
 
     app.register_blueprint(web.bp)
+    core_api = get_api(app)
+    core_api.register_blueprint(api.blp, url_prefix="/api/v1/federation")
+    openapi.register(app, core_api)

@@ -12,6 +12,7 @@ or switched off without touching anything else. Design: `docs/design/activitypub
    Signature schemes, vocabulary and document formats live there.
 3. **The rest of this package uses only the core's public surface**:
    - `scrobbler.__version__`
+   - `scrobbler.api.get_api` (to register federation's API blueprint and document its paths)
    - `scrobbler.events`
    - `scrobbler.extensions` (`db`)
    - `scrobbler.worker`

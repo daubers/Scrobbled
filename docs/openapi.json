@@ -1382,7 +1382,7 @@
           "Last.fm"
         ],
         "summary": "Call a Last.fm API method (query string)",
-        "description": "Last.fm (Audioscrobbler 2.0) compatible API. Point a scrobbler's \"custom Last.fm\nserver\" setting at this server's `/2.0/`.\n\n**Signing.** Signed methods need `api_sig`: take every parameter except `format`,\n`callback` and `api_sig`, sort by name, concatenate each name followed by its\nvalue, append your application's shared secret, and take the md5 hex digest.\n\n**Sessions.** Methods that act as a user need `sk`, a session key from\n`auth.getMobileSession` or the desktop flow (`auth.getToken`, approval at\n`/api/auth/`, then `auth.getSession`).\n\n**Errors** use Last.fm's codes: 2 (Invalid service), 3 (Invalid Method), 4 (Authentication Failed), 6 (Invalid parameters), 8 (Operation failed), 9 (Invalid session key), 10 (Invalid API key), 13 (Invalid method signature supplied), 14 (Unauthorized Token), 15 (This token has expired), 29 (Rate limit exceeded).\n\n## Methods\n### `auth.getMobileSession`\n\nCreate a session key from a username and password.\n\n*Requires:* signed.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `username` | yes | Username |\n| `password` | yes | Password (send over HTTPS, as a POST body) |\n\nThe legacy `authToken` (md5 of username + md5(password)) form is not supported, because it requires storing unsalted password hashes. Clients that only support it (such as pylast's `password_hash`) should use the desktop flow instead.\n\n### `auth.getSession`\n\nExchange an approved token for a session key (desktop auth flow, step 3).\n\n*Requires:* signed.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `token` | yes | Token from auth.getToken, approved by the user |\n\n### `auth.getToken`\n\nFetch an unapproved request token (desktop auth flow, step 1).\n\n*Requires:* signed.\n\nSend the user to `/api/auth/?api_key=\u2026&token=\u2026` to approve the token, then call auth.getSession. Tokens expire after 60 minutes.\n\n### `track.scrobble`\n\nScrobble up to 50 tracks.\n\n*Requires:* signed, session key.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `artist[i]` | yes | Artist name |\n| `track[i]` | yes | Track title |\n| `timestamp[i]` | yes | Unix time the track started playing |\n| `album[i]` | no | Album title |\n| `albumArtist[i]` | no | Album artist, if different from the track artist |\n| `duration[i]` | no | Track length in seconds |\n| `trackNumber[i]` | no | Position on the album |\n| `mbid[i]` | no | MusicBrainz track id |\n\nTracks are array parameters indexed from 0 (`artist[0]`, `track[0]`, ...); a single un-indexed track is also accepted. Tracks are ignored (not an error) when the artist or track is empty (codes 1/2), the timestamp is over 14 days old (3) or more than 5 minutes in the future (4). Re-sending an already stored scrobble is accepted, so retries are safe.\n\n### `track.updateNowPlaying`\n\nSet the track the user is listening to now.\n\n*Requires:* signed, session key.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `artist` | yes | Artist name |\n| `track` | yes | Track title |\n| `album` | no | Album title |\n| `albumArtist` | no | Album artist |\n| `duration` | no | Track length in seconds; now-playing expires after it |\n| `trackNumber` | no | Position on the album |\n| `mbid` | no | MusicBrainz track id |\n\nNow playing expires after the track's duration (10 minutes if not given).\n\n### `user.getInfo`\n\nA user's profile and play count.\n\n*Requires:* api_key only.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `user` | yes | Username to fetch data for |\n\n### `user.getRecentTracks`\n\nRecently scrobbled tracks, newest first, led by the now-playing track.\n\n*Requires:* api_key only.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `user` | yes | Username to fetch data for |\n| `limit` | no | Results per page (default 50, max 200) |\n| `page` | no | Page number (default 1) |\n| `from` | no | Only scrobbles at or after this Unix time |\n| `to` | no | Only scrobbles at or before this Unix time |\n\n### `user.getTopAlbums`\n\nMost played albums over a period.\n\n*Requires:* api_key only.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `user` | yes | Username to fetch data for |\n| `period` | no | overall | 7day | 1month | 3month | 6month | 12month (default overall) |\n| `limit` | no | Results per page (default 50, max 1000) |\n| `page` | no | Page number (default 1) |\n\n### `user.getTopArtists`\n\nMost played artists over a period.\n\n*Requires:* api_key only.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `user` | yes | Username to fetch data for |\n| `period` | no | overall | 7day | 1month | 3month | 6month | 12month (default overall) |\n| `limit` | no | Results per page (default 50, max 1000) |\n| `page` | no | Page number (default 1) |\n\n### `user.getTopTracks`\n\nMost played tracks over a period.\n\n*Requires:* api_key only.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `user` | yes | Username to fetch data for |\n| `period` | no | overall | 7day | 1month | 3month | 6month | 12month (default overall) |\n| `limit` | no | Results per page (default 50, max 1000) |\n| `page` | no | Page number (default 1) |",
+        "description": "Last.fm (Audioscrobbler 2.0) compatible API. Point a scrobbler's \"custom Last.fm\nserver\" setting at this server's `/2.0/`.\n\n**Signing.** Signed methods need `api_sig`: take every parameter except `format`,\n`callback` and `api_sig`, sort by name, concatenate each name followed by its\nvalue, append your application's shared secret, and take the md5 hex digest.\n\n**Sessions.** Methods that act as a user need `sk`, a session key from\n`auth.getMobileSession` or the desktop flow (`auth.getToken`, approval at\n`/api/auth/`, then `auth.getSession`).\n\n**Errors** use Last.fm's codes: 2 (Invalid service), 3 (Invalid Method), 4 (Authentication Failed), 6 (Invalid parameters), 8 (Operation failed), 9 (Invalid session key), 10 (Invalid API key), 13 (Invalid method signature supplied), 14 (Unauthorized Token), 15 (This token has expired), 29 (Rate limit exceeded).\n\n## Methods\n### `auth.getMobileSession`\n\nCreate a session key from a username and password.\n\n*Requires:* signed.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `username` | yes | Username |\n| `password` | yes | Password (send over HTTPS, as a POST body) |\n\nThe legacy `authToken` (md5 of username + md5(password)) form is not supported, because it requires storing unsalted password hashes. Clients that only support it (such as pylast's `password_hash`) should use the desktop flow instead.\n\n### `auth.getSession`\n\nExchange an approved token for a session key (desktop auth flow, step 3).\n\n*Requires:* signed.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `token` | yes | Token from auth.getToken, approved by the user |\n\n### `auth.getToken`\n\nFetch an unapproved request token (desktop auth flow, step 1).\n\n*Requires:* signed.\n\nSend the user to `/api/auth/?api_key=…&token=…` to approve the token, then call auth.getSession. Tokens expire after 60 minutes.\n\n### `track.scrobble`\n\nScrobble up to 50 tracks.\n\n*Requires:* signed, session key.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `artist[i]` | yes | Artist name |\n| `track[i]` | yes | Track title |\n| `timestamp[i]` | yes | Unix time the track started playing |\n| `album[i]` | no | Album title |\n| `albumArtist[i]` | no | Album artist, if different from the track artist |\n| `duration[i]` | no | Track length in seconds |\n| `trackNumber[i]` | no | Position on the album |\n| `mbid[i]` | no | MusicBrainz track id |\n\nTracks are array parameters indexed from 0 (`artist[0]`, `track[0]`, ...); a single un-indexed track is also accepted. Tracks are ignored (not an error) when the artist or track is empty (codes 1/2), the timestamp is over 14 days old (3) or more than 5 minutes in the future (4). Re-sending an already stored scrobble is accepted, so retries are safe.\n\n### `track.updateNowPlaying`\n\nSet the track the user is listening to now.\n\n*Requires:* signed, session key.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `artist` | yes | Artist name |\n| `track` | yes | Track title |\n| `album` | no | Album title |\n| `albumArtist` | no | Album artist |\n| `duration` | no | Track length in seconds; now-playing expires after it |\n| `trackNumber` | no | Position on the album |\n| `mbid` | no | MusicBrainz track id |\n\nNow playing expires after the track's duration (10 minutes if not given).\n\n### `user.getInfo`\n\nA user's profile and play count.\n\n*Requires:* api_key only.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `user` | yes | Username to fetch data for |\n\n### `user.getRecentTracks`\n\nRecently scrobbled tracks, newest first, led by the now-playing track.\n\n*Requires:* api_key only.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `user` | yes | Username to fetch data for |\n| `limit` | no | Results per page (default 50, max 200) |\n| `page` | no | Page number (default 1) |\n| `from` | no | Only scrobbles at or after this Unix time |\n| `to` | no | Only scrobbles at or before this Unix time |\n\n### `user.getTopAlbums`\n\nMost played albums over a period.\n\n*Requires:* api_key only.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `user` | yes | Username to fetch data for |\n| `period` | no | overall | 7day | 1month | 3month | 6month | 12month (default overall) |\n| `limit` | no | Results per page (default 50, max 1000) |\n| `page` | no | Page number (default 1) |\n\n### `user.getTopArtists`\n\nMost played artists over a period.\n\n*Requires:* api_key only.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `user` | yes | Username to fetch data for |\n| `period` | no | overall | 7day | 1month | 3month | 6month | 12month (default overall) |\n| `limit` | no | Results per page (default 50, max 1000) |\n| `page` | no | Page number (default 1) |\n\n### `user.getTopTracks`\n\nMost played tracks over a period.\n\n*Requires:* api_key only.\n\n| Parameter | Required | Description |\n|---|---|---|\n| `user` | yes | Username to fetch data for |\n| `period` | no | overall | 7day | 1month | 3month | 6month | 12month (default overall) |\n| `limit` | no | Results per page (default 50, max 1000) |\n| `page` | no | Page number (default 1) |",
         "operationId": "lastfmGet",
         "parameters": [
           {
@@ -1856,6 +1856,561 @@
           }
         }
       }
+    },
+    "/api/v1/federation/settings": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharingSettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Your sharing settings",
+        "description": "Sharing is off and posts are followers-only until you change them.",
+        "tags": [
+          "Federation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "responses": {
+          "422": {
+            "description": "Invalid settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharingSettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharingSettingsUpdate"
+              }
+            }
+          }
+        },
+        "summary": "Change your sharing settings",
+        "description": "Turning sharing on makes you findable as your handle. Your handle can't change once\npeople follow you. Visibility changes apply to new posts only.",
+        "tags": [
+          "Federation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/federation/profiles/{username}": {
+      "get": {
+        "responses": {
+          "404": {
+            "description": "No one sharing with that name",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProfile"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "A public fediverse profile",
+        "description": "For the web UI's profile page. Only users who share are visible.",
+        "tags": [
+          "Federation"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/.well-known/webfinger": {
+      "get": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "WebFinger",
+        "description": "Resolves `acct:user@domain` (or an actor URL) to the user's actor. Only users sharing their listening can be found.",
+        "operationId": "federation_webfinger_lookup",
+        "responses": {
+          "200": {
+            "description": "JRD",
+            "content": {
+              "application/jrd+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not a resource on this server"
+          },
+          "404": {
+            "description": "Unknown, or not sharing (the two are indistinguishable)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "resource",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "acct:alice@scrobble.example"
+          }
+        ]
+      }
+    },
+    "/.well-known/host-meta": {
+      "get": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "host-meta",
+        "description": "XRD pointing at WebFinger (RFC 6415).",
+        "operationId": "federation_host_meta",
+        "responses": {
+          "200": {
+            "description": "XRD",
+            "content": {
+              "application/xrd+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/.well-known/nodeinfo": {
+      "get": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "NodeInfo discovery",
+        "description": "Links to the NodeInfo 2.1 document.",
+        "operationId": "federation_nodeinfo_discovery",
+        "responses": {
+          "200": {
+            "description": "Links",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/nodeinfo/2.1": {
+      "get": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "NodeInfo 2.1",
+        "description": "Software name and version, protocols, and users sharing.",
+        "operationId": "federation_nodeinfo_document",
+        "responses": {
+          "200": {
+            "description": "NodeInfo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{username}": {
+      "get": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "Actor",
+        "description": "A user's `Person` actor when asked for ActivityPub JSON; browsers are redirected to the web UI's profile page.",
+        "operationId": "federation_actor",
+        "responses": {
+          "200": {
+            "description": "Person",
+            "content": {
+              "application/activity+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "302": {
+            "description": "Redirect to the profile page (non-ActivityPub Accept)"
+          },
+          "404": {
+            "description": "Unknown, or not sharing (the two are indistinguishable)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/users/{username}/outbox": {
+      "get": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "Outbox",
+        "description": "The user's published activities.",
+        "operationId": "federation_outbox",
+        "responses": {
+          "200": {
+            "description": "OrderedCollection",
+            "content": {
+              "application/activity+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, or not sharing (the two are indistinguishable)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/users/{username}/followers": {
+      "get": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "Followers",
+        "description": "Follower count (members aren't listed).",
+        "operationId": "federation_followers",
+        "responses": {
+          "200": {
+            "description": "OrderedCollection",
+            "content": {
+              "application/activity+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, or not sharing (the two are indistinguishable)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/users/{username}/following": {
+      "get": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "Following",
+        "description": "Accounts the user follows.",
+        "operationId": "federation_following",
+        "responses": {
+          "200": {
+            "description": "OrderedCollection",
+            "content": {
+              "application/activity+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, or not sharing (the two are indistinguishable)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/actor": {
+      "get": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "Instance actor",
+        "description": "The server's `Application` actor.",
+        "operationId": "federation_instance_actor",
+        "responses": {
+          "200": {
+            "description": "Application",
+            "content": {
+              "application/activity+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/actor/outbox": {
+      "get": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "Instance outbox",
+        "description": "Always empty.",
+        "operationId": "federation_instance_outbox",
+        "responses": {
+          "200": {
+            "description": "OrderedCollection",
+            "content": {
+              "application/activity+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{username}/inbox": {
+      "post": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "User inbox",
+        "description": "Receives activities for one user (signed deliveries).",
+        "operationId": "federation_user_inbox",
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "404": {
+            "description": "Unknown, or not sharing (the two are indistinguishable)"
+          },
+          "413": {
+            "description": "Too large"
+          }
+        },
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/activity+json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/inbox": {
+      "post": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "Shared inbox",
+        "description": "Receives activities for any user on this server.",
+        "operationId": "federation_shared_inbox",
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "413": {
+            "description": "Too large"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/activity+json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "tags": [
@@ -1890,6 +2445,14 @@
     {
       "name": "Last.fm",
       "description": "Last.fm-compatible API for players and scrobblers"
+    },
+    {
+      "name": "Federation",
+      "description": "Sharing listening on the fediverse (ActivityPub). These endpoints only exist when the server has federation enabled; a 404 means it doesn't."
+    },
+    {
+      "name": "ActivityPub",
+      "description": "Fediverse endpoints, served on the web UI's domain"
     }
   ],
   "openapi": "3.1.0",
@@ -3005,6 +3568,155 @@
           "api_key",
           "user"
         ]
+      },
+      "SharingSettings": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Share listening on the fediverse"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "followers",
+              "unlisted",
+              "public"
+            ],
+            "description": "Who sees posts: `followers` (default), `unlisted` (anyone visiting the profile, not public timelines) or `public`. Followers-only is only as private as who may follow: see `manually_approves_followers`."
+          },
+          "manually_approves_followers": {
+            "type": "boolean"
+          },
+          "discoverable": {
+            "type": "boolean",
+            "description": "May appear in profile directories"
+          },
+          "indexable": {
+            "type": "boolean",
+            "description": "Posts may be indexed for search"
+          },
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "bio": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          },
+          "handle": {
+            "type": "string",
+            "readOnly": true,
+            "example": "@alice@scrobble.example"
+          },
+          "actor_url": {
+            "type": "string",
+            "readOnly": true
+          },
+          "profile_url": {
+            "type": "string",
+            "readOnly": true
+          },
+          "followers": {
+            "type": "integer",
+            "readOnly": true,
+            "description": "0 until following arrives"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SharingSettingsUpdate": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Share listening on the fediverse"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "followers",
+              "unlisted",
+              "public"
+            ],
+            "description": "Who sees posts: `followers` (default), `unlisted` (anyone visiting the profile, not public timelines) or `public`. Followers-only is only as private as who may follow: see `manually_approves_followers`."
+          },
+          "manually_approves_followers": {
+            "type": "boolean"
+          },
+          "discoverable": {
+            "type": "boolean",
+            "description": "May appear in profile directories"
+          },
+          "indexable": {
+            "type": "boolean",
+            "description": "Posts may be indexed for search"
+          },
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "bio": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          },
+          "handle": {
+            "type": "string",
+            "readOnly": true,
+            "example": "@alice@scrobble.example"
+          },
+          "actor_url": {
+            "type": "string",
+            "readOnly": true
+          },
+          "profile_url": {
+            "type": "string",
+            "readOnly": true
+          },
+          "followers": {
+            "type": "integer",
+            "readOnly": true,
+            "description": "0 until following arrives"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicProfile": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "bio": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "handle": {
+            "type": "string",
+            "example": "@alice@scrobble.example"
+          },
+          "actor_url": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       }
     },
     "responses": {

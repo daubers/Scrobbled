@@ -106,7 +106,7 @@ uv run ruff check && uv run ruff format --check
 ```
 
 - **Migrations** come in two branches, `core` and `federation`. After changing core models, run `uv run flask --app scrobbler db migrate --head core@head -m "…"`; federation tables use `--head federation@head` (see `src/scrobbler/federation/README.md`). Apply them with `db upgrade heads`. CI fails if the models and migrations disagree.
-- **API docs**: after changing an endpoint, run `uv run flask --app scrobbler openapi write --format=json docs/openapi.json`. A test fails if the committed spec is stale. Every route has to appear in the spec, and every UI route has to declare bearer auth.
+- **API docs**: after changing an endpoint, run `uv run python -m scrobbler.openapi.export docs/openapi.json`. It documents the API with every optional module (such as federation) switched on. A test fails if the committed spec is stale. Every route has to appear in the spec, and every UI route has to declare bearer auth.
 - **Demo traffic**: `uv run python scripts/generate_traffic.py --minutes 5` sends a realistic mix of scrobbles and errors, so the dashboards have something to show.
 
 The test suite includes an end-to-end run with [pylast](https://github.com/pylast/pylast) over HTTPS and a real two-worker gunicorn run, which checks that metrics aggregate across workers.

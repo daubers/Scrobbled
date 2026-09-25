@@ -36,6 +36,7 @@ FRAMEWORKS = (
 )
 CORE_PUBLIC_SURFACE = (
     "scrobbler.__version__",
+    "scrobbler.api.get_api",
     "scrobbler.events",
     "scrobbler.extensions",
     "scrobbler.worker",
@@ -85,7 +86,8 @@ def violations(module: str, imports: set[str]) -> list[str]:
                 problems.append(f"{module} (protocol) imports {name}")
     elif within(module, FEDERATION):
         for name in imports:
-            if not within(name, "scrobbler") or name == "scrobbler":
+            # The packages themselves (for their public names listed above) are fine.
+            if not within(name, "scrobbler") or name in ("scrobbler", "scrobbler.api"):
                 continue
             if within(name, FEDERATION) or any(within(name, ok) for ok in CORE_PUBLIC_SURFACE):
                 continue
@@ -126,6 +128,7 @@ def test_federation_package_is_checked():
         (PROTOCOL + ".vocab", "from ..config import FederationConfig", "imports"),
         (FEDERATION + ".inbox", "from scrobbler.models import User", "core internals"),
         (FEDERATION + ".inbox", "from scrobbler import metrics", "core internals"),
+        (FEDERATION + ".api", "from scrobbler.api import apps", "core internals"),
     ],
 )
 def test_the_checker_catches_violations(module, source, expected):
@@ -143,6 +146,7 @@ def test_the_checker_catches_violations(module, source, expected):
             "from scrobbler.services import stats\nfrom scrobbler import events",
         ),
         (FEDERATION + ".inbox", "from .protocol import vocab\nfrom flask import Blueprint"),
+        (FEDERATION, "from scrobbler.api import get_api"),
         (PROTOCOL + ".signatures.rfc9421", "from ..vocab import note\nimport hashlib"),
     ],
 )
