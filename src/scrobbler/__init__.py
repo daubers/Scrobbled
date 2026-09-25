@@ -1,6 +1,11 @@
 """Self-hosted, Last.fm-compatible music scrobbling service."""
 
-__version__ = "0.1.0"
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("scrobbler")  # set from the release tag at build time
+except PackageNotFoundError:  # running from a source tree without installing
+    __version__ = "0.0.0+unknown"
 
 
 def create_app(config_object=None):

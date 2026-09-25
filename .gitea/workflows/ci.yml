@@ -1,12 +1,17 @@
 name: CI
 
+# Checks run on every push and PR. Pushes to main and v* tags then publish, but only
+# once every check has passed: container images and the monitoring/API-docs bundle
+# on both, the Python package on tags. Every run is reported to ntfy.
 on:
   push:
     branches: ["**"]
-    tags-ignore: ["**"]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
-  workflow_call:
+
+env:
+  UV_VERSION: "0.7.21"
 
 jobs:
   lint:
@@ -16,7 +21,7 @@ jobs:
       - uses: https://github.com/astral-sh/setup-uv@v6
         with:
           # Exact version: avoids an unauthenticated GitHub API lookup for "latest".
-          version: "0.7.21"
+          version: ${{ env.UV_VERSION }}
       - run: uv sync --locked
       - run: uv run ruff check
       - run: uv run ruff format --check
@@ -43,7 +48,7 @@ jobs:
       - uses: https://github.com/astral-sh/setup-uv@v6
         with:
           # Exact version: avoids an unauthenticated GitHub API lookup for "latest".
-          version: "0.7.21"
+          version: ${{ env.UV_VERSION }}
       - run: uv sync --locked
       - name: Migrations are in sync with the models
         run: |
@@ -72,17 +77,127 @@ jobs:
       - name: Dashboards are valid JSON
         run: for f in deploy/grafana/dashboards/*.json; do python3 -m json.tool "$f" > /dev/null; done
 
-  notify:
+  # ---- Publishing (main and v* tags only) -------------------------------------
+
+  images:
     needs: [lint, test, validate-monitoring]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    outputs:
+      tags: ${{ steps.version.outputs.image_tags }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: https://github.com/astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+      - id: version
+        name: Work out the version and image tags
+        run: |
+          short="${GITHUB_SHA::7}"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            tags="$version latest sha-$short"
+          else
+            version="$(uv version --short)+g$short"
+            tags="main sha-$short"
+          fi
+          uv version "$version"  # baked into the image (scrobbler_build_info)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "image_tags=$tags" >> "$GITHUB_OUTPUT"
+      - name: Log in to ProGet
+        run: echo "${{ secrets.PKGS_PASSWORD }}" | docker login "${{ vars.PKGS_HOST }}" -u "${{ secrets.PKGS_USER }}" --password-stdin
+      - name: Build and push
+        env:
+          REGISTRY: ${{ vars.PKGS_HOST }}/${{ vars.PKGS_DOCKER_FEED }}
+          TAGS: ${{ steps.version.outputs.image_tags }}
+        run: |
+          for image in api ui; do
+            args=()
+            for tag in $TAGS; do args+=(-t "$REGISTRY/scrobbler-$image:$tag"); done
+            docker build -f "docker/$image.Dockerfile" "${args[@]}" \
+              --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+              --label "org.opencontainers.image.version=${{ steps.version.outputs.version }}" .
+            for tag in $TAGS; do docker push "$REGISTRY/scrobbler-$image:$tag"; done
+          done
+      - if: always()
+        run: docker logout "${{ vars.PKGS_HOST }}" || true
+
+  assets:
+    needs: [lint, test, validate-monitoring]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload API spec, dashboards and Prometheus config
+        env:
+          API_KEY: ${{ secrets.PKGS_API_KEY }}
+          BASE: https://${{ vars.PKGS_HOST }}/endpoints/${{ vars.PKGS_ASSET_FEED }}/content/scrobbler
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then dirs="${GITHUB_REF_NAME#v}"; else dirs="main sha-${GITHUB_SHA::7}"; fi
+          files="docs/openapi.json docker-compose.yml deploy/prometheus/prometheus.yml deploy/prometheus/alerts.yml
+                 deploy/grafana/provisioning/datasources/prometheus.yml deploy/grafana/provisioning/dashboards/dashboards.yml
+                 $(ls deploy/grafana/dashboards/*.json)"
+          for dir in $dirs; do
+            for file in $files; do
+              curl -fsS -X PUT -H "X-ApiKey: $API_KEY" --data-binary "@$file" "$BASE/$dir/$file"
+              echo "uploaded $dir/$file"
+            done
+          done
+
+  python-package:
+    needs: [lint, test, validate-monitoring]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: https://github.com/astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+      - run: uv version "${GITHUB_REF_NAME#v}"
+      - run: uv build
+      - name: Publish to ProGet
+        run: >-
+          uv publish
+          --publish-url "https://${{ vars.PKGS_HOST }}/pypi/${{ vars.PKGS_PYPI_FEED }}/legacy"
+          --username api --password "${{ secrets.PKGS_API_KEY }}"
+
+  notify:
+    needs: [lint, test, validate-monitoring, images, assets, python-package]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - id: summary
+        name: Summarise the run
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          IMAGE_TAGS: ${{ needs.images.outputs.tags }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          needs = json.loads(os.environ["NEEDS"])
+          results = {job: info["result"] for job, info in needs.items()}
+          if "failure" in results.values():
+              status = "failure"
+          elif "cancelled" in results.values():
+              status = "cancelled"
+          else:
+              status = "success"
+          ran = [f"{job}: {result}" for job, result in results.items() if result != "skipped"]
+          lines = [" · ".join(ran)]
+          if os.environ.get("IMAGE_TAGS"):
+              lines.append("images: " + ", ".join(os.environ["IMAGE_TAGS"].split()))
+          ref = os.environ["GITHUB_REF"]
+          title = f"Release {os.environ['GITHUB_REF_NAME']}" if ref.startswith("refs/tags/") else f"CI {os.environ['GITHUB_REF_NAME']}"
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"status={status}\ntitle={title}\n")
+              out.write("message<<EOF\n" + "\n".join(lines) + "\nEOF\n")
+          PY
       - uses: ./.gitea/actions/notify
         with:
-          status: ${{ (needs.lint.result == 'success' && needs.test.result == 'success' && needs.validate-monitoring.result == 'success') && 'success' || ((needs.lint.result == 'cancelled' || needs.test.result == 'cancelled' || needs.validate-monitoring.result == 'cancelled') && 'cancelled' || 'failure') }}
-          title: CI ${{ github.ref_name }}
-          message: "lint: ${{ needs.lint.result }} · test: ${{ needs.test.result }} · monitoring: ${{ needs.validate-monitoring.result }}"
+          status: ${{ steps.summary.outputs.status }}
+          title: ${{ steps.summary.outputs.title }}
+          message: ${{ steps.summary.outputs.message }}
           url: ${{ vars.NTFY_URL }}
           topic: ${{ vars.NTFY_TOPIC }}
           user: ${{ secrets.NTFY_USER }}

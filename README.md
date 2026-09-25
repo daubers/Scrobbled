@@ -126,17 +126,22 @@ Tests check that every metric a dashboard or alert uses actually exists.
 
 ## CI/CD (Gitea Actions)
 
-- **`ci.yml`** runs on every push and PR:
+Everything runs from `.gitea/workflows/ci.yml`:
+
+- **Every push and PR**:
   - lint
   - the migrations check
   - tests against Postgres
   - `promtool` checks of the Prometheus config and alert rules
-- **`publish.yml`** runs on `main` and on `v*` tags. It builds and pushes both images to the ProGet `scrobbler` Docker feed, and uploads the OpenAPI spec, dashboards and Prometheus config to the `scrobbler-assets` feed. On tags it also publishes the wheel to the `scrobbler-python` PyPI feed.
-- **Notifications**: every workflow run is posted to the `ScrobblingService` topic on notify.daubney.dev.
+- **Pushes to `main` and `v*` tags**, once every check has passed:
+  - both images are pushed to the ProGet `scrobbler` Docker feed. `main` builds are tagged `main` and `sha-<commit>`; tags are tagged `<version>`, `latest` and `sha-<commit>`.
+  - the OpenAPI spec, dashboards and Prometheus config are uploaded to the `scrobbler-assets` feed under `scrobbler/<version>/` or `scrobbler/main/`.
+- **`v*` tags** also publish the wheel and sdist to the `scrobbler-python` PyPI feed.
+- **Every run** is posted to the `ScrobblingService` topic on notify.daubney.dev.
 
-The workflows need these repository secrets and variables:
+The workflow needs these repository secrets and variables:
 
 - **Secrets**: `PKGS_USER`, `PKGS_PASSWORD`, `PKGS_API_KEY`, `NTFY_USER`, `NTFY_PASSWORD`
 - **Variables**: `PKGS_HOST`, `PKGS_DOCKER_FEED`, `PKGS_PYPI_FEED`, `PKGS_ASSET_FEED`, `NTFY_URL`, `NTFY_TOPIC`
 
-To release, tag `vX.Y.Z` on `main`. The tag sets the package version.
+To release, tag `vX.Y.Z` on `main` and push the tag. The tag sets the package and image version.
