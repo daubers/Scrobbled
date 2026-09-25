@@ -254,3 +254,26 @@ def test_gone_actors_are_marked(fed_remote):
     with pytest.raises(FetchError):
         remote.get_actor(uri, refresh=True)
     assert db.session.scalar(db.select(FederationRemoteActor).filter_by(uri=uri)).gone is True
+
+
+def test_actor_for_a_key_url_that_serves_the_actor(fed_remote):
+    """GoToSocial: the key id is <actor>/main-key, and fetching it returns the actor."""
+    uri = fed_remote.url("/users/dana")
+    doc = actor_doc(fed_remote, name="dana")
+    key_id = f"{uri}/main-key"
+    doc["publicKey"]["id"] = key_id
+    fed_remote.routes["/users/dana"] = (200, {}, doc)
+    fed_remote.routes["/users/dana/main-key"] = (200, {}, doc)  # same document
+    actor = remote.actor_for_key(key_id)
+    assert (actor.uri, actor.public_key_id) == (uri, key_id)
+
+
+def test_key_owner_on_another_host_is_refused(fed_remote):
+    key_id = fed_remote.url("/keys/eve")
+    fed_remote.routes["/keys/eve"] = (
+        200,
+        {},
+        {"id": key_id, "owner": "https://elsewhere.example/users/eve", "publicKeyPem": "x"},
+    )
+    with pytest.raises(remote.ActorError):
+        remote.actor_for_key(key_id)

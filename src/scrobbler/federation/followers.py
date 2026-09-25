@@ -63,12 +63,29 @@ def follow_received(
     return "pending"
 
 
-def undo_follow(user_id: int, actor: FederationRemoteActor) -> bool:
+def undo_follow(user_id: int, actor: FederationRemoteActor, follow_id: str | None) -> str:
+    """Handle an Undo of a Follow. It only removes the follower if it undoes their current
+    Follow: an Undo of an older one can arrive after a newer Follow (deliveries race)."""
     follower = get(user_id, actor)
     if follower is None:
-        return False
+        return "undo_not_following"
+    if follow_id is not None and follow_id != follower.follow_activity_id:
+        return "undo_stale"
     db.session.delete(follower)
-    return True
+    return "unfollowed"
+
+
+def undo_follow_by_id(actor: FederationRemoteActor, follow_id: str) -> str:
+    """An Undo naming the Follow only by id: remove whoever follows with that Follow."""
+    follower = db.session.scalar(
+        db.select(FederationFollower).filter_by(
+            remote_actor_id=actor.id, follow_activity_id=follow_id
+        )
+    )
+    if follower is None:
+        return "undo_not_following"
+    db.session.delete(follower)
+    return "unfollowed"
 
 
 def actor_deleted(actor: FederationRemoteActor) -> int:

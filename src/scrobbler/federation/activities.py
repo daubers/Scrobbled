@@ -68,3 +68,22 @@ def block(user_id: int, username: str, actor: FederationRemoteActor) -> Federati
     activity = _store(user_id, lambda url: vocab.block(url, ids.actor_id(username), actor.uri))
     queue(activity, [actor.inbox])
     return activity
+
+
+def undo_block(
+    user_id: int, username: str, actor: FederationRemoteActor
+) -> FederationActivity | None:
+    """Tell them they're unblocked: Undo our most recent Block of them (if we sent one)."""
+    block_activity = db.session.scalars(
+        db.select(FederationActivity)
+        .filter_by(user_id=user_id, activity_type="Block")
+        .filter(FederationActivity.document["object"].as_string() == actor.uri)
+        .order_by(FederationActivity.created_at.desc())
+    ).first()
+    if block_activity is None:
+        return None
+    activity = _store(
+        user_id, lambda url: vocab.undo(url, ids.actor_id(username), block_activity.document)
+    )
+    queue(activity, [actor.inbox])
+    return activity

@@ -16,6 +16,7 @@ ACTOR_CONTEXT = [
         "toot": "http://joinmastodon.org/ns#",
         "discoverable": "toot:discoverable",
         "indexable": "toot:indexable",
+        "featured": {"@id": "toot:featured", "@type": "@id"},
         "schema": "http://schema.org#",
         "PropertyValue": "schema:PropertyValue",
         "value": "schema:value",
@@ -30,6 +31,7 @@ class ActorUrls:
     outbox: str
     followers: str
     following: str
+    featured: str
     shared_inbox: str
     key_id: str
     profile_page: str
@@ -43,6 +45,7 @@ def actor_urls(base_url: str, username: str, profile_page: str) -> ActorUrls:
         outbox=f"{actor}/outbox",
         followers=f"{actor}/followers",
         following=f"{actor}/following",
+        featured=f"{actor}/collections/featured",
         shared_inbox=f"{base_url}/inbox",
         key_id=f"{actor}#main-key",
         profile_page=profile_page,
@@ -90,6 +93,7 @@ def person(
         "outbox": urls.outbox,
         "followers": urls.followers,
         "following": urls.following,
+        "featured": urls.featured,
         "endpoints": {"sharedInbox": urls.shared_inbox},
         "publicKey": public_key(urls, public_key_pem),
         "manuallyApprovesFollowers": manually_approves_followers,
@@ -164,12 +168,29 @@ def accept(activity_id: str, actor_id: str, follow: dict) -> dict:
 
 
 def reject(activity_id: str, actor_id: str, follow: dict) -> dict:
-    """Decline a follow request, or end an existing follow."""
-    return _response("Reject", activity_id, actor_id, follow, follow["actor"])
+    """Decline a follow request, or end an existing follow.
+
+    The Follow is referenced by id rather than embedded: some servers match an embedded
+    Follow by the pair of accounts, so a late Reject of an old Follow would cancel a
+    newer request between the same accounts. An id matches exactly that Follow."""
+    return _response("Reject", activity_id, actor_id, follow["id"], follow["actor"])
 
 
 def block(activity_id: str, actor_id: str, blocked_actor: str) -> dict:
     return _response("Block", activity_id, actor_id, blocked_actor, blocked_actor)
+
+
+def undo(activity_id: str, actor_id: str, undone: dict) -> dict:
+    """Withdraw one of our earlier activities (e.g. a Block when unblocking)."""
+    to = undone.get("to") or []
+    return {
+        "@context": AS_CONTEXT,
+        "id": activity_id,
+        "type": "Undo",
+        "actor": actor_id,
+        "object": undone,
+        "to": list(to),
+    }
 
 
 def object_id(value) -> str | None:

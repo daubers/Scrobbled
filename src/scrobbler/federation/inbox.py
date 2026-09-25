@@ -294,12 +294,14 @@ def on_follow(doc: dict, actor: FederationRemoteActor) -> str:
 @handles("Undo")
 def on_undo(doc: dict, actor: FederationRemoteActor) -> str:
     inner = doc.get("object")
+    if isinstance(inner, str):  # the Follow referenced by id rather than embedded
+        return followers.undo_follow_by_id(actor, inner)
     if not isinstance(inner, dict) or inner.get("type") != "Follow":
         return "undo_ignored"
     if object_id(inner.get("actor")) not in (None, actor.uri):
         raise Rejected("undo_other_actors_follow")
     user, _ = _local_user(inner.get("object"))
-    return "unfollowed" if followers.undo_follow(user.id, actor) else "undo_not_following"
+    return followers.undo_follow(user.id, actor, object_id(inner))
 
 
 @handles("Delete")

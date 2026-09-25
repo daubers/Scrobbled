@@ -105,8 +105,10 @@ def get_actor(uri: str, refresh: bool = False) -> FederationRemoteActor:
 
 
 def actor_for_key(key_id: str, refresh: bool = False) -> FederationRemoteActor:
-    """The actor that owns `key_id`: usually `<actor>#main-key`, sometimes a separate
-    key document naming its owner."""
+    """The actor that owns `key_id`. Servers publish keys three ways:
+    * a fragment of the actor (`<actor>#main-key`, Mastodon);
+    * a URL that serves the actor document itself (`<actor>/main-key`, GoToSocial);
+    * a separate key document naming its `owner`."""
     cached = db.session.scalar(db.select(FederationRemoteActor).filter_by(public_key_id=key_id))
     if cached is not None and not refresh:
         # Any age will do for checking a signature (a failure refreshes once). This also
@@ -116,12 +118,24 @@ def actor_for_key(key_id: str, refresh: bool = False) -> FederationRemoteActor:
     try:
         return _matching(get_actor(document_url, refresh=True), key_id)
     except ActorError:
-        # Not an actor: a standalone key document pointing at its owner
-        doc = outbound.signed_get_json(document_url)
-        owner = doc.get("owner")
-        if doc.get("id") != key_id or not isinstance(owner, str) or _host(owner) != _host(key_id):
-            raise
-        return _matching(get_actor(owner, refresh=True), key_id)
+        pass  # the key's URL isn't the actor's own URL: find the owner from the document
+    doc = outbound.signed_get_json(document_url)
+    if doc.get("id") == key_id and isinstance(doc.get("owner"), str):
+        owner = doc["owner"]  # a standalone key document
+    elif isinstance(doc.get("id"), str) and _key_id_of(doc) == key_id:
+        owner = doc["id"]  # the actor document, served at the key's URL
+    else:
+        raise ActorError(f"can't find who owns key {key_id}")
+    if _host(owner) != _host(key_id):
+        raise ActorError(f"key {key_id} claims an owner on another host")
+    return _matching(get_actor(owner, refresh=True), key_id)
+
+
+def _key_id_of(doc: dict) -> str | None:
+    key = doc.get("publicKey")
+    if isinstance(key, list):
+        key = next((k for k in key if isinstance(k, dict)), None)
+    return key.get("id") if isinstance(key, dict) else None
 
 
 def _matching(actor: FederationRemoteActor, key_id: str) -> FederationRemoteActor:

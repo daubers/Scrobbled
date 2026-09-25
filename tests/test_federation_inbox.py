@@ -185,6 +185,44 @@ def test_undo_follow(fed_client, bob, sharing_user):
     assert followers_of(sharing_user) == []
 
 
+def test_undo_referencing_the_follow_by_id(fed_client, bob, sharing_user):
+    follow = bob.follow()
+    bob.deliver(fed_client, follow)
+    process_all()
+    bob.deliver(fed_client, bob.activity("Undo", follow["id"]))
+    process_all()
+    assert last_item().reason == "unfollowed"
+    assert followers_of(sharing_user) == []
+
+
+def test_rejects_reference_the_follow_by_id(fed_client, bob, sharing_user):
+    """So a late Reject can't be matched to a newer request between the same accounts."""
+    from scrobbler.federation import followers
+
+    follow = bob.follow()
+    bob.deliver(fed_client, follow)
+    process_all()
+    followers.remove("alice", followers_of(sharing_user)[0])
+    db.session.commit()
+    [reject] = sent("Reject")
+    assert reject.document["object"] == follow["id"]
+
+
+def test_a_late_undo_of_an_old_follow_keeps_the_new_one(fed_client, bob, sharing_user):
+    """Deliveries race: an Undo of an earlier Follow can arrive after a newer Follow
+    (seen against GoToSocial). Only an Undo of the current Follow removes the follower."""
+    old_follow = bob.follow()
+    bob.deliver(fed_client, old_follow)
+    process_all()
+    new_follow = bob.follow()
+    bob.deliver(fed_client, new_follow)
+    bob.deliver(fed_client, bob.activity("Undo", old_follow))  # arrives after the new Follow
+    process_all()
+    assert last_item().reason == "undo_stale"
+    [follower] = followers_of(sharing_user)
+    assert follower.follow_activity_id == new_follow["id"]
+
+
 def test_undo_of_someone_elses_follow_is_rejected(fed_client, bob, remote, sharing_user):
     carol = RemoteAccount(remote, "carol")
     follow = carol.follow()

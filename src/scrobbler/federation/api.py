@@ -5,9 +5,9 @@ from flask_smorest import Blueprint, abort
 
 from scrobbler.api.decorators import authenticated
 from scrobbler.extensions import db
+from scrobbler.federation import activities, sharing
 from scrobbler.federation import followers as follower_state
 from scrobbler.federation import metrics as fed_metrics
-from scrobbler.federation import sharing
 from scrobbler.federation.models import FederationBlock, FederationFollower
 from scrobbler.federation.schemas import (
     BlockSchema,
@@ -225,10 +225,12 @@ def list_blocks():
 def unblock(block_id):
     """Unblock an account
 
-    They can follow you again (they aren't re-added).
+    Their server is told (an Undo of the Block). They can follow you again; they aren't
+    re-added.
     """
     block = db.session.get(FederationBlock, block_id)
     if block is None or block.user_id != g.user.id:
         abort(404, code="not_found", message="No such block")
+    activities.undo_block(g.user.id, g.user.username, block.actor)  # tell their server
     db.session.delete(block)
     db.session.commit()

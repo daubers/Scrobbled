@@ -111,6 +111,13 @@ _OPERATIONS = {
         [_USERNAME],
         {"200": {"description": "OrderedCollection", "content": _AP}, "404": _NOT_FOUND},
     ),
+    "federation.featured": (
+        "get",
+        "Featured",
+        "Pinned posts (always empty for now).",
+        [_USERNAME],
+        {"200": {"description": "OrderedCollection", "content": _AP}, "404": _NOT_FOUND},
+    ),
     "federation.instance_actor": (
         "get",
         "Instance actor",

@@ -165,6 +165,11 @@ def followers(username: str):
     return _collection(username, "followers", None, total)  # the count, not who
 
 
+@bp.get("/users/<username>/collections/featured")
+def featured(username: str):
+    return _collection(username, "featured", [])  # pinned posts: none (yet)
+
+
 @bp.get("/users/<username>/following")
 def following(username: str):
     return _collection(username, "following", [])

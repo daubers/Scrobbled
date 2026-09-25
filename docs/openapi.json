@@ -2361,7 +2361,7 @@
           }
         },
         "summary": "Unblock an account",
-        "description": "They can follow you again (they aren't re-added).",
+        "description": "Their server is told (an Undo of the Block). They can follow you again; they aren't\nre-added.",
         "tags": [
           "Federation"
         ],
@@ -2637,6 +2637,52 @@
         "summary": "Following",
         "description": "Accounts the user follows.",
         "operationId": "federation_following",
+        "responses": {
+          "200": {
+            "description": "OrderedCollection",
+            "content": {
+              "application/activity+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, or not sharing (the two are indistinguishable)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/users/{username}/collections/featured": {
+      "get": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "Featured",
+        "description": "Pinned posts (always empty for now).",
+        "operationId": "federation_featured",
         "responses": {
           "200": {
             "description": "OrderedCollection",

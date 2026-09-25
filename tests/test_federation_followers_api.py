@@ -111,6 +111,10 @@ def test_block_and_unblock(fed_client, auth_headers, accounts):
     assert sent_types()[-1] == "Reject"
 
     assert api(fed_client, "delete", f"/blocks/{block['id']}", auth_headers).status_code == 204
+    # Their server is told they're unblocked: an Undo of our Block
+    undo = db.session.scalars(db.select(FederationActivity).filter_by(activity_type="Undo")).one()
+    assert undo.document["object"]["type"] == "Block"
+    assert undo.document["object"]["object"] == accounts["bob"].uri
     follow(fed_client, accounts["bob"])  # now allowed
     assert len(api(fed_client, "get", "/followers", auth_headers).get_json()) == 1
 
