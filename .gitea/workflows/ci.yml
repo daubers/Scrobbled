@@ -77,10 +77,26 @@ jobs:
       - name: Dashboards are valid JSON
         run: for f in deploy/grafana/dashboards/*.json; do python3 -m json.tool "$f" > /dev/null; done
 
+  federation-interop:
+    # A real GoToSocial server follows a Scrobbler user (see scripts/interop/run.sh).
+    # Not for pull requests from forks: it runs containers on the runner's Docker.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scrobbler <-> GoToSocial
+        env:
+          INTEROP_PROJECT: interop-${{ github.run_id }}
+        run: |
+          # A subnet of its own, so concurrent runs can't collide
+          export INTEROP_SUBNET="172.30.$(( ${{ github.run_number }} % 200 + 20 )).0/24"
+          scripts/interop/run.sh
+
   # ---- Publishing (main and v* tags only) -------------------------------------
 
   images:
-    needs: [lint, test, validate-monitoring]
+    needs: [lint, test, validate-monitoring, federation-interop]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
     outputs:
@@ -123,7 +139,7 @@ jobs:
         run: docker logout "${{ vars.PKGS_HOST }}" || true
 
   assets:
-    needs: [lint, test, validate-monitoring]
+    needs: [lint, test, validate-monitoring, federation-interop]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
     steps:
@@ -147,7 +163,7 @@ jobs:
           done
 
   python-package:
-    needs: [lint, test, validate-monitoring]
+    needs: [lint, test, validate-monitoring, federation-interop]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
@@ -164,7 +180,7 @@ jobs:
           --username api --password "${{ secrets.PKGS_API_KEY }}"
 
   notify:
-    needs: [lint, test, validate-monitoring, images, assets, python-package]
+    needs: [lint, test, validate-monitoring, federation-interop, images, assets, python-package]
     if: always()
     runs-on: ubuntu-latest
     steps:

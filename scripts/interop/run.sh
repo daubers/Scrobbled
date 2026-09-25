@@ -24,6 +24,7 @@ echo "==> Creating the GoToSocial test user"
   --username gtsuser --email gtsuser@gts.test --password 'Interop-Test-Password-1' >/dev/null
 "$compose" exec -T gotosocial /gotosocial/gotosocial admin account confirm --username gtsuser >/dev/null
 
+"$compose" build driver >/dev/null
 "$compose" run --rm driver
 status=$?
 if [ $status -ne 0 ]; then

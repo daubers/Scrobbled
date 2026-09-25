@@ -22,11 +22,12 @@ networks:
   fedi:
     ipam:
       config:
-        - subnet: 172.30.0.0/24
+        - subnet: ${INTEROP_SUBNET:-172.30.0.0/24}
 
 services:
   db:
     ports: !reset []
+    volumes: !reset [db-data:/var/lib/postgresql/data]  # no bind mounts (CI)
     networks: [fedi]
 
   api:
@@ -62,9 +63,9 @@ services:
       GTS_PORT: "80"
       GTS_DB_TYPE: sqlite
       GTS_DB_ADDRESS: /gotosocial/storage/sqlite.db
-      GTS_HTTP_CLIENT_ALLOW_IPS: 172.30.0.0/24  # let it reach Scrobbler on this network
+      GTS_HTTP_CLIENT_ALLOW_IPS: ${INTEROP_SUBNET:-172.30.0.0/24}  # let it reach Scrobbler on this network
       GTS_HTTP_CLIENT_TLS_INSECURE_SKIP_VERIFY: "true"  # Caddy's throwaway certificate
-      GTS_TRUSTED_PROXIES: 172.30.0.0/24
+      GTS_TRUSTED_PROXIES: ${INTEROP_SUBNET:-172.30.0.0/24}
       GTS_ACCOUNTS_REGISTRATION_OPEN: "false"
       GTS_LOG_LEVEL: ${GTS_LOG_LEVEL:-info}
     sysctls:
@@ -74,9 +75,10 @@ services:
         aliases: [gts.test]
 
   driver:
-    image: python:3.13-slim
+    build:
+      context: .
+      dockerfile: deploy/interop/driver.Dockerfile
     profiles: [driver]
-    volumes:
-      - ./scripts/interop:/interop:ro  # relative to the project (first compose file)
-    command: ["python", "/interop/gotosocial_interop.py"]
+    environment:
+      GTS_REJECT_ENDS_FOLLOWS: ${GTS_REJECT_ENDS_FOLLOWS:-0}
     networks: [fedi]
