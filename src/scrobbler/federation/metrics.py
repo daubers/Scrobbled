@@ -18,9 +18,14 @@ inbox_requests_total = Counter(
     ["inbox"],
 )
 
-# Every scrobbler_federation_* series name, for the dashboard consistency test.
-SERIES = (
-    "scrobbler_federation_lookups_total",
-    "scrobbler_federation_sharing_changes_total",
-    "scrobbler_federation_inbox_requests_total",
+inbox_activities_total = Counter(
+    "scrobbler_federation_inbox_activities_total",
+    "Activities received: queued, duplicate, blocked or invalid at intake; then processed, "
+    "rejected or failed",
+    ["type", "result"],
+)
+signatures_total = Counter(
+    "scrobbler_federation_signatures_total",
+    "HTTP signature checks (in) and signing (out), by scheme and result",
+    ["direction", "scheme", "result"],
 )

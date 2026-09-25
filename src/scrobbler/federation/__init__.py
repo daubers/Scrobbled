@@ -35,3 +35,9 @@ def init_app(app: Flask) -> None:
     core_api = get_api(app)
     core_api.register_blueprint(api.blp, url_prefix="/api/v1/federation")
     openapi.register(app, core_api)
+
+    from scrobbler import worker
+    from scrobbler.federation import inbox
+
+    worker.register_task(app, "federation.inbox", inbox.work_once)
+    worker.register_periodic(app, "federation.inbox.maintenance", 300, inbox.maintenance)

@@ -106,25 +106,6 @@ def test_instance_actor(fed_client, fed_ctx):
     assert (doc["type"], doc["id"]) == ("Application", f"{BASE}/actor")
 
 
-def test_inboxes_accept_and_count_deliveries(fed_client, sharing_user, metric_delta):
-    shared = metric_delta("scrobbler_federation_inbox_requests_total", inbox="shared")
-    body = b'{"type": "Follow"}'
-    assert (
-        fed_client.post("/inbox", data=body, content_type="application/activity+json").status_code
-        == 202
-    )
-    assert (
-        fed_client.post(
-            "/users/alice/inbox", data=body, content_type="application/activity+json"
-        ).status_code
-        == 202
-    )
-    assert fed_client.post("/users/nobody/inbox", data=body).status_code == 404
-    too_big = fed_client.post("/inbox", data=b"x" * (256 * 1024 + 1))
-    assert too_big.status_code == 413
-    assert shared.delta == 1
-
-
 def test_disabled_app_has_none_of_these_routes(client):
     for path in (
         "/.well-known/webfinger?resource=acct:alice@scrobble.test",

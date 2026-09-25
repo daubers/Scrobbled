@@ -2340,17 +2340,26 @@
           "ActivityPub"
         ],
         "summary": "User inbox",
-        "description": "Receives activities for one user (signed deliveries).",
+        "description": "Receives signed activities for one user. They're stored and answered with 202, then verified and processed in the background.",
         "operationId": "federation_user_inbox",
         "responses": {
           "202": {
-            "description": "Accepted"
+            "description": "Accepted for processing (also for a repeated activity)"
+          },
+          "400": {
+            "description": "Not an activity with an id, type and actor"
+          },
+          "403": {
+            "description": "The sender's domain is blocked"
           },
           "404": {
-            "description": "Unknown, or not sharing (the two are indistinguishable)"
+            "description": "No such user sharing (user inbox)"
           },
           "413": {
-            "description": "Too large"
+            "description": "Larger than 256 KB"
+          },
+          "415": {
+            "description": "Not ActivityPub JSON"
           }
         },
         "parameters": [
@@ -2391,14 +2400,26 @@
           "ActivityPub"
         ],
         "summary": "Shared inbox",
-        "description": "Receives activities for any user on this server.",
+        "description": "Receives signed activities for any user on this server (as for the user inbox).",
         "operationId": "federation_shared_inbox",
         "responses": {
           "202": {
-            "description": "Accepted"
+            "description": "Accepted for processing (also for a repeated activity)"
+          },
+          "400": {
+            "description": "Not an activity with an id, type and actor"
+          },
+          "403": {
+            "description": "The sender's domain is blocked"
+          },
+          "404": {
+            "description": "No such user sharing (user inbox)"
           },
           "413": {
-            "description": "Too large"
+            "description": "Larger than 256 KB"
+          },
+          "415": {
+            "description": "Not ActivityPub JSON"
           }
         },
         "requestBody": {
@@ -2411,6 +2432,52 @@
           }
         }
       }
+    },
+    "/activities/{activity_uuid}": {
+      "get": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "Activity",
+        "description": "One of our activities, when public. Replies to follows aren't public.",
+        "operationId": "federation_activity",
+        "responses": {
+          "200": {
+            "description": "Activity",
+            "content": {
+              "application/activity+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found or not public"
+          }
+        },
+        "parameters": [
+          {
+            "name": "activity_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "activity_uuid",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
     }
   },
   "tags": [

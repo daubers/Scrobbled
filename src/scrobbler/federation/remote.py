@@ -109,7 +109,9 @@ def actor_for_key(key_id: str, refresh: bool = False) -> FederationRemoteActor:
     key document naming its owner."""
     cached = db.session.scalar(db.select(FederationRemoteActor).filter_by(public_key_id=key_id))
     if cached is not None and not refresh:
-        return get_actor(cached.uri)
+        # Any age will do for checking a signature (a failure refreshes once). This also
+        # lets a deleted account's Delete verify although its server now answers 410.
+        return cached
     document_url = urldefrag(key_id).url
     try:
         return _matching(get_actor(document_url, refresh=True), key_id)

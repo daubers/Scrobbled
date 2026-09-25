@@ -6,13 +6,14 @@ import json
 
 from flask import Blueprint, Response, current_app, redirect, request
 
-from scrobbler.federation import keys, sharing
+from scrobbler.extensions import db
+from scrobbler.federation import inbox, keys, sharing
 from scrobbler.federation import metrics as fed_metrics
+from scrobbler.federation.models import FederationActivity
 from scrobbler.federation.protocol import hostmeta, media, nodeinfo, vocab, webfinger
 
 bp = Blueprint("federation", __name__)
 
-MAX_INBOX_BYTES = 256 * 1024
 _NOT_FOUND = {"error": "not found"}
 
 
@@ -177,23 +178,46 @@ def instance_outbox():
     return _json(vocab.ordered_collection(f"{_config().base_url}/actor/outbox", 0, []))
 
 
-# --- Inboxes (phase 2 processes deliveries) -----------------------------------------------
+# --- Inboxes ----------------------------------------------------------------------------
 
 
-def _accept_delivery(inbox: str):
-    if (request.content_length or 0) > MAX_INBOX_BYTES:
+def _receive(inbox_path: str, kind: str):
+    if (request.content_length or 0) > inbox.MAX_BYTES:
         return _json({"error": "too large"}, content_type="application/json", status=413)
-    fed_metrics.inbox_requests_total.labels(inbox=inbox).inc()
-    return Response(status=202)
+    if not media.is_activitypub_content_type(request.content_type):
+        return _json(
+            {"error": "expected ActivityPub JSON"}, content_type="application/json", status=415
+        )
+    fed_metrics.inbox_requests_total.labels(inbox=kind).inc()
+    status, outcome = inbox.receive(inbox_path, dict(request.headers), request.get_data())
+    if status == 202:
+        return Response(status=202)
+    return _json({"error": outcome}, content_type="application/json", status=status)
+
+
+def _path() -> str:
+    return request.full_path.rstrip("?")
 
 
 @bp.post("/users/<username>/inbox")
 def user_inbox(username: str):
     if sharing.shared_user(username) is None:
         return _not_found("actor")
-    return _accept_delivery("user")
+    return _receive(_path(), "user")
 
 
 @bp.post("/inbox")
 def shared_inbox():
-    return _accept_delivery("shared")
+    return _receive(_path(), "shared")
+
+
+# --- Our activities ------------------------------------------------------------------------
+
+
+@bp.get("/activities/<activity_uuid>")
+def activity(activity_uuid: str):
+    """Activities are fetchable when public; follow responses aren't."""
+    found = db.session.get(FederationActivity, activity_uuid)
+    if found is None or not found.public:
+        return _json(_NOT_FOUND, content_type="application/json", status=404)
+    return _json(found.document)

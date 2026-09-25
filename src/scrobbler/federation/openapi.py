@@ -7,6 +7,14 @@ TAG = "ActivityPub"
 
 _AP = {"application/activity+json": {"schema": {"type": "object"}}}
 _NOT_FOUND = {"description": "Unknown, or not sharing (the two are indistinguishable)"}
+_INBOX_RESPONSES = {
+    "202": {"description": "Accepted for processing (also for a repeated activity)"},
+    "400": {"description": "Not an activity with an id, type and actor"},
+    "403": {"description": "The sender's domain is blocked"},
+    "404": {"description": "No such user sharing (user inbox)"},
+    "413": {"description": "Larger than 256 KB"},
+    "415": {"description": "Not ActivityPub JSON"},
+}
 _USERNAME = {"name": "username", "in": "path", "required": True, "schema": {"type": "string"}}
 
 # endpoint -> (method, summary, description, extra parameters, responses)
@@ -120,20 +128,27 @@ _OPERATIONS = {
     "federation.user_inbox": (
         "post",
         "User inbox",
-        "Receives activities for one user (signed deliveries).",
+        "Receives signed activities for one user. They're stored and answered with 202, then "
+        "verified and processed in the background.",
         [_USERNAME],
-        {
-            "202": {"description": "Accepted"},
-            "404": _NOT_FOUND,
-            "413": {"description": "Too large"},
-        },
+        _INBOX_RESPONSES,
     ),
     "federation.shared_inbox": (
         "post",
         "Shared inbox",
-        "Receives activities for any user on this server.",
+        "Receives signed activities for any user on this server (as for the user inbox).",
         [],
-        {"202": {"description": "Accepted"}, "413": {"description": "Too large"}},
+        _INBOX_RESPONSES,
+    ),
+    "federation.activity": (
+        "get",
+        "Activity",
+        "One of our activities, when public. Replies to follows aren't public.",
+        [{"name": "activity_uuid", "in": "path", "required": True, "schema": {"type": "string"}}],
+        {
+            "200": {"description": "Activity", "content": _AP},
+            "404": {"description": "Not found or not public"},
+        },
     ),
 }
 

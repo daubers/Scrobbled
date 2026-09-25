@@ -4,7 +4,7 @@ import json
 
 from flask import current_app
 
-from scrobbler.federation import keys
+from scrobbler.federation import ids, keys
 from scrobbler.federation.net import Client, FetchError, Response
 from scrobbler.federation.protocol import signatures
 from scrobbler.federation.protocol.media import ACTIVITY_JSON, LD_JSON
@@ -26,14 +26,6 @@ def client() -> Client:
     return existing
 
 
-def instance_key_id() -> str:
-    return f"{current_app.extensions['federation'].base_url}/actor#main-key"
-
-
-def user_key_id(username: str) -> str:
-    return f"{current_app.extensions['federation'].base_url}/users/{username}#main-key"
-
-
 def _signed_headers(method, url, headers, body, key_id, private_key, scheme) -> dict[str, str]:
     request = SignedRequest(method, url, headers, body)
     return {**headers, **signatures.sign(request, scheme, key_id, private_key)}
@@ -47,7 +39,7 @@ def signed_get_json(url: str) -> dict:
     schemes = current_app.extensions["federation"].signature_schemes
     response = None
     for scheme in schemes:
-        signed = _signed_headers("GET", url, headers, b"", instance_key_id(), private, scheme)
+        signed = _signed_headers("GET", url, headers, b"", ids.instance_key_id(), private, scheme)
         response = client().request("GET", url, signed)
         if response.status != 401:
             break
@@ -65,7 +57,7 @@ def signed_post(url: str, activity: dict, *, user_id: int, username: str) -> tup
     headers = {"Content-Type": LD_JSON, "Accept": ACTIVITY_JSON}
     response, used = None, ""
     for used in current_app.extensions["federation"].signature_schemes:
-        signed = _signed_headers("POST", url, headers, body, user_key_id(username), private, used)
+        signed = _signed_headers("POST", url, headers, body, ids.key_id(username), private, used)
         response = client().request("POST", url, signed, body)
         if response.status != 401:
             break

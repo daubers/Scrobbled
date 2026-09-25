@@ -145,3 +145,35 @@ def ordered_collection(collection_id: str, total: int, items: list | None = None
     if items is not None:
         doc["orderedItems"] = items
     return doc
+
+
+def _response(kind: str, activity_id: str, actor_id: str, obj, to: str) -> dict:
+    return {
+        "@context": AS_CONTEXT,
+        "id": activity_id,
+        "type": kind,
+        "actor": actor_id,
+        "object": obj,
+        "to": [to],
+    }
+
+
+def accept(activity_id: str, actor_id: str, follow: dict) -> dict:
+    """Accept a Follow (the original Follow is embedded, as Mastodon expects)."""
+    return _response("Accept", activity_id, actor_id, follow, follow["actor"])
+
+
+def reject(activity_id: str, actor_id: str, follow: dict) -> dict:
+    """Decline a follow request, or end an existing follow."""
+    return _response("Reject", activity_id, actor_id, follow, follow["actor"])
+
+
+def block(activity_id: str, actor_id: str, blocked_actor: str) -> dict:
+    return _response("Block", activity_id, actor_id, blocked_actor, blocked_actor)
+
+
+def object_id(value) -> str | None:
+    """An object's id, whether it's given inline (a dict) or as a bare URI."""
+    if isinstance(value, dict):
+        value = value.get("id")
+    return value if isinstance(value, str) and value else None
