@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Create an account · Scrobbler</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%231c2330'/%3E%3Ccircle cx='8' cy='8' r='3.5' fill='%23f2a541'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="config.js"></script>
+    <script type="module" src="js/register.js"></script>
+  </head>
+  <body>
+    <header class="site-header" id="site-header"></header>
+    <main id="main">
+    <div class="auth">
+      <h1>Create an account</h1>
+      <p class="lede">Your listening history stays on this server.</p>
+      <div id="messages"></div>
+      <form id="register" novalidate>
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" name="username" autocomplete="username" required minlength="2" maxlength="32" pattern="[A-Za-z0-9_.\-]+" aria-describedby="username-hint">
+          <span class="hint" id="username-hint">Letters, numbers, dots, dashes and underscores. Players use this to sign in.</span>
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="new-password" required minlength="8" aria-describedby="password-hint">
+          <span class="hint" id="password-hint">At least 8 characters.</span>
+        </div>
+        <button class="button" type="submit">Create account</button>
+      </form>
+      <p class="auth-alt">Already have an account? <a href="login.html">Sign in</a></p>
+    </div>
+    </main>
+  </body>
+</html>

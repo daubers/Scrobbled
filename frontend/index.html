@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Overview · Scrobbler</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%231c2330'/%3E%3Ccircle cx='8' cy='8' r='3.5' fill='%23f2a541'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="config.js"></script>
+    <script type="module" src="js/dashboard.js"></script>
+  </head>
+  <body>
+    <header class="site-header" id="site-header"></header>
+    <main id="main">
+    <h1 class="visually-hidden">Overview</h1>
+    <div id="panel" class="panel" aria-live="polite"></div>
+    <section aria-labelledby="charts-title">
+      <div class="section-head">
+        <h2 id="charts-title">Most played</h2>
+        <fieldset class="selector" id="period">
+          <legend class="visually-hidden">Period</legend>
+        </fieldset>
+      </div>
+      <div class="charts">
+        <div><h3 class="muted">Artists</h3><ol class="ranking" id="top-artists"></ol></div>
+        <div><h3 class="muted">Tracks</h3><ol class="ranking" id="top-tracks"></ol></div>
+      </div>
+    </section>
+    <section aria-labelledby="recent-title">
+      <div class="section-head">
+        <h2 id="recent-title">Recently played</h2>
+        <a href="history.html">Full history</a>
+      </div>
+      <ol class="log" id="recent"></ol>
+    </section>
+    </main>
+  </body>
+</html>

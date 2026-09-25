@@ -1,0 +1,781 @@
+@import url("../fonts/fonts.css");
+
+/* ---- Tokens ------------------------------------------------------------------
+   Paper and ink carry the page; the panel is a hi-fi front panel whose amber
+   display glow is used nowhere else. */
+:root {
+  color-scheme: light;
+  --paper: #e8ecf1;
+  --paper-raised: #f4f6f9;
+  --ink: #18202c;
+  --ink-soft: #4a5566;
+  --slate: #5b6b82;
+  --rule: #c9d0da;
+  --bar: #cdd6e2;
+  --danger: #b3412e;
+  --ok: #2f6e4f;
+  --focus: #2f5da8;
+
+  --panel: #1c2330;
+  --panel-edge: #2a3445;
+  --panel-text: #b9c3d2;
+  --glow: #f2a541;
+  --glow-dim: #3a3326;
+
+  --font-ui: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Doto", "Instrument Sans", monospace;
+
+  /* Type scale: a 1.25 ratio on a 16px base */
+  --step--1: 0.8rem;
+  --step-0: 1rem;
+  --step-1: 1.25rem;
+  --step-2: 1.563rem;
+  --step-3: 1.953rem;
+  --step-4: 2.441rem;
+
+  --radius-control: 6px;
+  --radius-panel: 14px;
+  --measure: 70ch;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #12171f;
+    --paper-raised: #19202b;
+    --ink: #e3e8ef;
+    --ink-soft: #a7b1c0;
+    --slate: #8795aa;
+    --rule: #2c3543;
+    --bar: #273142;
+    --danger: #e0806c;
+    --ok: #7cc3a0;
+    --focus: #8fb4f0;
+    --panel: #0b0f16;
+    --panel-edge: #232c3a;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #12171f;
+  --paper-raised: #19202b;
+  --ink: #e3e8ef;
+  --ink-soft: #a7b1c0;
+  --slate: #8795aa;
+  --rule: #2c3543;
+  --bar: #273142;
+  --danger: #e0806c;
+  --ok: #7cc3a0;
+  --focus: #8fb4f0;
+  --panel: #0b0f16;
+  --panel-edge: #232c3a;
+}
+
+/* ---- Base ----------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--step-0);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.15;
+  margin: 0;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: var(--step-3);
+}
+
+h2 {
+  font-size: var(--step-1);
+}
+
+p {
+  margin: 0;
+  max-width: var(--measure);
+}
+
+a {
+  color: inherit;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- Shell ---------------------------------------------------------------- */
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 2rem;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1.25rem 16px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  font-size: var(--step-1);
+  text-decoration: none;
+}
+
+/* A small round "power" lamp */
+.brand-mark {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--glow);
+  box-shadow: 0 0 0 3px var(--panel), 0 0 10px 1px color-mix(in srgb, var(--glow) 60%, transparent);
+}
+
+.site-header nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-header nav a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+}
+
+.site-header nav a:hover {
+  color: var(--ink);
+}
+
+.site-header nav a[aria-current="page"] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+.account {
+  margin-left: auto;
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  color: var(--ink-soft);
+}
+
+main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0.5rem 16px 4rem;
+}
+
+.page-title {
+  margin: 1.5rem 0 0.5rem;
+}
+
+.lede {
+  color: var(--ink-soft);
+  margin-bottom: 2rem;
+}
+
+section + section {
+  margin-top: 3rem;
+}
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+/* ---- Controls ------------------------------------------------------------- */
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0.4rem 1.1rem;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-control);
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.button:hover {
+  background: color-mix(in srgb, var(--ink) 85%, var(--paper));
+}
+
+.button[disabled] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.button-quiet {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--rule);
+}
+
+.button-quiet:hover {
+  background: var(--paper-raised);
+}
+
+.button-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.button-danger:hover {
+  background: color-mix(in srgb, var(--danger) 85%, #000);
+}
+
+.link-button {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: var(--ink);
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 1.1rem;
+}
+
+.field label {
+  font-weight: 600;
+}
+
+.field .hint {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+
+.field input {
+  min-height: 2.6rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  background: var(--paper-raised);
+}
+
+.field input:focus-visible {
+  border-color: var(--focus);
+}
+
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.inline-form .field {
+  flex: 1 1 16rem;
+  margin: 0;
+}
+
+/* Segmented control, like an input selector on an amplifier */
+.selector {
+  display: inline-flex;
+  margin: 0;
+  min-inline-size: 0;
+  border: 0;
+  padding: 3px;
+  border-radius: calc(var(--radius-control) + 3px);
+  background: var(--panel);
+  gap: 2px;
+}
+
+.selector input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.selector label {
+  padding: 0.3rem 0.8rem;
+  border-radius: var(--radius-control);
+  color: var(--panel-text);
+  font-size: var(--step--1);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.selector input:checked + label {
+  background: var(--panel-edge);
+  color: var(--glow);
+}
+
+.selector input:focus-visible + label {
+  outline: 2px solid var(--glow);
+  outline-offset: 1px;
+}
+
+.notice {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-control);
+  border-left: 4px solid var(--slate);
+  background: var(--paper-raised);
+  margin-bottom: 1.25rem;
+}
+
+.notice-error {
+  border-left-color: var(--danger);
+}
+
+.notice-ok {
+  border-left-color: var(--ok);
+}
+
+.muted {
+  color: var(--ink-soft);
+}
+
+.empty {
+  color: var(--ink-soft);
+  padding: 1.5rem 0;
+}
+
+/* ---- Front panel (overview) ---------------------------------------------- */
+.panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  grid-template-areas:
+    "display readouts"
+    "spectrum spectrum";
+  gap: 1.5rem 2rem;
+  padding: 1.75rem;
+  margin: 1.5rem 0 3rem;
+  border-radius: var(--radius-panel);
+  background: var(--panel);
+  color: var(--panel-text);
+  box-shadow: inset 0 1px 0 var(--panel-edge);
+}
+
+.display {
+  grid-area: display;
+  min-height: 9.5rem;
+  padding: 1.1rem 1.25rem;
+  border-radius: 8px;
+  background: #06080c;
+  box-shadow: inset 0 0 0 1px var(--panel-edge), inset 0 8px 24px rgb(0 0 0 / 0.6);
+  overflow: hidden;
+}
+
+.display-status {
+  font-size: var(--step--1);
+  color: var(--slate);
+  margin-bottom: 0.4rem;
+}
+
+.display-track {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.6rem, 4vw, var(--step-4));
+  line-height: 1.05;
+  color: var(--glow);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--glow) 55%, transparent);
+  overflow-wrap: anywhere;
+}
+
+.display-idle .display-track {
+  color: var(--glow-dim);
+  text-shadow: none;
+}
+
+.display-meta {
+  margin-top: 0.5rem;
+  color: var(--panel-text);
+}
+
+.display-meta strong {
+  color: #e6ebf2;
+  font-weight: 600;
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
+  color: var(--slate);
+}
+
+.progress-track {
+  flex: 1;
+  height: 3px;
+  background: var(--glow-dim);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--glow);
+  width: 0;
+}
+
+.readouts {
+  grid-area: readouts;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: center;
+  gap: 1rem;
+  margin: 0;
+}
+
+.readouts div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.readouts dt {
+  font-size: var(--step--1);
+  color: var(--slate);
+  order: 2;
+}
+
+.readouts dd {
+  margin: 0;
+  font-size: var(--step-2);
+  font-weight: 650;
+  color: #e6ebf2;
+  font-variant-numeric: tabular-nums;
+}
+
+.spectrum {
+  grid-area: spectrum;
+}
+
+.spectrum svg {
+  display: block;
+  width: 100%;
+  height: 96px;
+}
+
+.spectrum .seg-on {
+  fill: var(--glow);
+}
+
+.spectrum .seg-off {
+  fill: var(--glow-dim);
+}
+
+.spectrum-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  font-size: var(--step--1);
+  color: var(--slate);
+}
+
+/* ---- Ranked lists --------------------------------------------------------- */
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 2.5rem 3rem;
+}
+
+.ranking {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ranking li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.ranking .rank {
+  color: var(--slate);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.ranking .name {
+  overflow-wrap: anywhere;
+}
+
+.ranking .by {
+  display: block;
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+
+.ranking .plays {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+
+/* Relative play count, drawn as a hairline meter along the row's bottom edge */
+.ranking .meter {
+  position: absolute;
+  left: 2.75rem;
+  bottom: -1px;
+  height: 2px;
+  background: var(--slate);
+}
+
+/* ---- Listening log -------------------------------------------------------- */
+.log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.log li {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+/* Clock times (HH:MM) need far less room than relative times */
+.log-clock li {
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+}
+
+.log time {
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.log .track {
+  font-weight: 600;
+}
+
+.log .by {
+  color: var(--ink-soft);
+}
+
+.log-day {
+  margin: 2rem 0 0.25rem;
+  font-size: var(--step-0);
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.pager {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+/* ---- Apps & sessions ------------------------------------------------------ */
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.rows > li {
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.row-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+}
+
+.row-title {
+  font-weight: 650;
+  font-size: var(--step-1);
+}
+
+.keys {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.4rem 1rem;
+  margin: 0.9rem 0 0;
+}
+
+.keys dt {
+  color: var(--ink-soft);
+}
+
+.keys dd {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: baseline;
+}
+
+.confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.setup {
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius-panel);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+}
+
+.setup dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.5rem 1.25rem;
+  margin: 1rem 0 0;
+}
+
+.setup dt {
+  color: var(--ink-soft);
+}
+
+.setup dd {
+  margin: 0;
+}
+
+/* ---- Auth pages ----------------------------------------------------------- */
+.auth {
+  max-width: 26rem;
+  margin: 3rem auto 0;
+}
+
+.auth h1 {
+  margin-bottom: 0.5rem;
+}
+
+.auth .lede {
+  margin-bottom: 1.75rem;
+}
+
+.auth .button {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.auth-alt {
+  margin-top: 1.5rem;
+  color: var(--ink-soft);
+}
+
+.approve-app {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--step-3);
+  color: var(--glow);
+  background: var(--panel);
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  margin: 1.25rem 0;
+  overflow-wrap: anywhere;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* ---- Small screens -------------------------------------------------------- */
+@media (max-width: 760px) {
+  .panel {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "display"
+      "readouts"
+      "spectrum";
+    padding: 1rem;
+    margin-inline: -8px;
+  }
+
+  .account {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .keys,
+  .setup dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .keys dt,
+  .setup dt {
+    margin-top: 0.4rem;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .progress-fill {
+    transition: width 1s linear;
+  }
+}
