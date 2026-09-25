@@ -19,6 +19,7 @@ from scrobbler.federation.net import FetchError
 
 ACTOR_TYPES = {"Person", "Service", "Application", "Group", "Organization"}
 MAX_AGE = timedelta(hours=24)
+MAX_URL = 1024
 
 
 class ActorError(Exception):
@@ -34,17 +35,19 @@ def _text(value, limit: int) -> str | None:
 
 
 def _parse_actor(uri: str, doc: dict) -> dict:
+    if len(uri) > 2048:
+        raise ActorError("actor URI too long")
     if doc.get("id") != uri:
         raise ActorError(f"{uri} claims to be {doc.get('id')!r}")
     if doc.get("type") not in ACTOR_TYPES:
         raise ActorError(f"{uri} isn't an actor ({doc.get('type')!r})")
     host = _host(uri)
     inbox = doc.get("inbox")
-    if not isinstance(inbox, str) or _host(inbox) != host:
+    if not isinstance(inbox, str) or _host(inbox) != host or len(inbox) > MAX_URL:
         raise ActorError(f"{uri} has no inbox on its own host")
     endpoints = doc.get("endpoints") if isinstance(doc.get("endpoints"), dict) else {}
     shared = endpoints.get("sharedInbox")
-    if not isinstance(shared, str) or _host(shared) != host:
+    if not isinstance(shared, str) or _host(shared) != host or len(shared) > MAX_URL:
         shared = None
     key = doc.get("publicKey")
     if isinstance(key, list):  # some servers list several

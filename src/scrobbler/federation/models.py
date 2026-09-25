@@ -3,8 +3,20 @@ is a foreign key to users. Migrations live on the `federation` Alembic branch.""
 
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, LargeBinary, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    LargeBinary,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from scrobbler.extensions import db
 
@@ -56,8 +68,8 @@ class FederationRemoteActor(db.Model):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     uri: Mapped[str] = mapped_column(String(2048), unique=True)
     host: Mapped[str] = mapped_column(String(255), index=True)
-    inbox: Mapped[str] = mapped_column(String(2048))
-    shared_inbox: Mapped[str | None] = mapped_column(String(2048))
+    inbox: Mapped[str] = mapped_column(String(1024))
+    shared_inbox: Mapped[str | None] = mapped_column(String(1024))
     username: Mapped[str | None] = mapped_column(String(255))  # preferredUsername
     display_name: Mapped[str | None] = mapped_column(String(255))
     public_key_id: Mapped[str] = mapped_column(String(2048), index=True)
@@ -72,3 +84,106 @@ class FederationRemoteActor(db.Model):
     @property
     def delivery_inbox(self) -> str:
         return self.shared_inbox or self.inbox
+
+
+class FederationFollower(db.Model):
+    """A remote actor following one of our users."""
+
+    __tablename__ = "federation_followers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    remote_actor_id: Mapped[int] = mapped_column(
+        ForeignKey("federation_remote_actors.id", ondelete="CASCADE")
+    )
+    state: Mapped[str] = mapped_column(String(16))  # pending or accepted
+    follow_activity_id: Mapped[str] = mapped_column(String(2048))
+    follow_activity: Mapped[dict] = mapped_column(JSON().with_variant(JSONB, "postgresql"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    actor: Mapped[FederationRemoteActor] = relationship(lazy="joined")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "remote_actor_id", name="uq_federation_follower"),
+    )
+
+
+class FederationBlock(db.Model):
+    """A user blocking a remote actor (their follows are refused)."""
+
+    __tablename__ = "federation_blocks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    remote_actor_id: Mapped[int] = mapped_column(
+        ForeignKey("federation_remote_actors.id", ondelete="CASCADE")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    actor: Mapped[FederationRemoteActor] = relationship(lazy="joined")
+
+    __table_args__ = (UniqueConstraint("user_id", "remote_actor_id", name="uq_federation_block"),)
+
+
+class FederationInboxItem(db.Model):
+    """A delivery received at an inbox, queued for the worker to verify and process."""
+
+    __tablename__ = "federation_inbox"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    activity_id: Mapped[str] = mapped_column(String(2048), unique=True)
+    activity_type: Mapped[str] = mapped_column(String(64))
+    actor_uri: Mapped[str] = mapped_column(String(2048))
+    inbox_path: Mapped[str] = mapped_column(String(512))  # as received, for the signature
+    headers: Mapped[dict] = mapped_column(JSON().with_variant(JSONB, "postgresql"))
+    body: Mapped[bytes] = mapped_column(LargeBinary)
+    status: Mapped[str] = mapped_column(
+        String(16), default="queued"
+    )  # queued, processed, rejected, failed
+    reason: Mapped[str | None] = mapped_column(String(255))
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_federation_inbox_status_received", "status", "received_at"),)
+
+
+class FederationActivity(db.Model):
+    """An activity we sent (Accept, Reject, Block; posts in phase 3)."""
+
+    __tablename__ = "federation_activities"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)  # UUID, part of its URL
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    activity_type: Mapped[str] = mapped_column(String(64))
+    document: Mapped[dict] = mapped_column(JSON().with_variant(JSONB, "postgresql"))
+    public: Mapped[bool] = mapped_column(Boolean, default=False)  # may be fetched by anyone
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class FederationDelivery(db.Model):
+    """One activity to one inbox, with retries."""
+
+    __tablename__ = "federation_deliveries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    activity_id: Mapped[str] = mapped_column(
+        ForeignKey("federation_activities.id", ondelete="CASCADE"), index=True
+    )
+    inbox: Mapped[str] = mapped_column(String(1024))  # keeps the unique index small
+    # pending, delivered, failed or abandoned
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_status: Mapped[int | None] = mapped_column(Integer)
+    last_error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    activity: Mapped[FederationActivity] = relationship(lazy="joined")
+
+    __table_args__ = (
+        UniqueConstraint("activity_id", "inbox", name="uq_federation_delivery"),
+        Index("ix_federation_deliveries_due", "status", "next_attempt_at"),
+    )
