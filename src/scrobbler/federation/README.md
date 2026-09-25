@@ -27,8 +27,8 @@ or switched off without touching anything else. Design: `docs/design/activitypub
 | Variable | Meaning |
 |---|---|
 | `FEDERATION_ENABLED` | `1` to turn federation on (default off) |
-| `FEDERATION_DOMAIN` | Handle domain: users are `@name@<domain>`. **Permanent once anyone follows.** |
-| `FEDERATION_BASE_URL` | Public `https://` URL of the API, where actors live (`<base>/users/<name>`) |
+| `FEDERATION_DOMAIN` | Handle domain, normally the web UI's host: users are `@name@<domain>`. **Permanent once anyone follows.** |
+| `FEDERATION_BASE_URL` | Public `https://` URL actors live under (`<base>/users/<name>`). Normally the web UI's origin, with the UI's nginx forwarding the ActivityPub paths to the API. |
 
 ## Migrations
 

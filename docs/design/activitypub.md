@@ -26,7 +26,7 @@ All of it lives in **one self-contained package, `scrobbler.federation`**, behin
     - **Weekly summary**: on by default once sharing is on.
     - **Milestones**: on by default.
     - **Now playing**: off by default, with two ways to show it. See [Now playing](#now-playing).
-  - **Who can see posts**: *Unlisted* (recommended: followers and profile visitors only, not public timelines), *Public*, or *Followers only*.
+  - **Who can see posts**: *Followers only* (**the default**), *Unlisted* (anyone who visits the profile, but kept out of public timelines), or *Public*. The help text explains that followers-only is only as private as who can follow: with automatic approval anyone can follow and then see posts, so for real privacy it suggests turning on **Approve followers manually**.
   - **Approve followers manually** (off by default).
   - Profile fields: display name, bio, avatar. The avatar defaults to a generated cover-art-style tile.
 - **Followers**: a list of remote followers, with *Remove*. There are *Approve* and *Decline* buttons when manual approval is on.
@@ -119,14 +119,23 @@ src/scrobbler/
 
 ## Protocol pieces
 
-### Identity and domains ("decide later", made configurable)
+### Identity and domains
 
-Two settings:
+**Decided: the UI's domain**, which is the name users already know. Two settings configure it:
 
-- `FEDERATION_DOMAIN`: the handle's domain, as in `@alice@<FEDERATION_DOMAIN>`.
-- `FEDERATION_BASE_URL`: where the actor documents live, as in `https://<host>/users/alice`.
+- `FEDERATION_DOMAIN`: the handle's domain, as in `@alice@<FEDERATION_DOMAIN>`. This is the UI's host.
+- `FEDERATION_BASE_URL`: where the actor documents live, as in `https://<host>/users/alice`. It's also the UI's origin, so actor links, profile links and the handle all show one domain, and the API hostname stays an internal detail.
 
-They can be the same (simplest) or different. If they differ, the handle domain only has to answer `/.well-known/webfinger` (and ideally `/.well-known/host-meta`). Mastodon supports this split: it follows the WebFinger `self` link to the actor. So the UI's nginx can forward just `/.well-known/webfinger` to the API and keep the API on its own hostname.
+The UI's nginx **forwards the ActivityPub paths to the API**:
+
+- `/.well-known/webfinger`, `/.well-known/nodeinfo`, `/.well-known/host-meta`
+- `/nodeinfo/`, `/users/`, `/inbox`, `/actor`
+
+All other paths are the static UI, as now. None of these paths collide with the UI's pages. The proxy passes `Host` and `X-Forwarded-*` through, and the API must trust them (`FORWARDED_ALLOW_IPS`), so that signature checks, which cover the request target and host, see the URL the remote server actually signed.
+
+A browser opening an actor URL (`/users/alice` without an ActivityPub `Accept` header) gets a redirect from the API to the UI's profile page.
+
+The two settings are kept separate even though they're usually the same host: the design still allows handles on one domain and actors on another, should that ever be needed. Mastodon supports that split through WebFinger's `self` link.
 
 **Both values become permanent once anyone follows**: actor IDs are how other servers identify the account. Renaming a user or moving domains later needs the `Move` flow and `alsoKnownAs` (see [Later](#later-following-and-listen-activities)). So we should:
 
@@ -213,13 +222,20 @@ Serve `/.well-known/nodeinfo` and `/nodeinfo/2.1`, giving the software name `scr
 
 ## What gets posted
 
-Posts are `Note` objects inside `Create` activities: Mastodon shows `Note` as a normal status, while other types are squashed into a title and link. The HTML uses only tags Mastodon keeps (`p`, `a`, `br`, `strong`, `em`, `ul`, `ol`, `li`), and all track and artist text is escaped. Each post also gets hashtags (`#NowPlaying`, `#Scrobbler`) as `Hashtag` tags. Visibility follows the user's setting:
+Posts are `Note` objects inside `Create` activities: Mastodon shows `Note` as a normal status, while other types are squashed into a title and link. The HTML uses only tags Mastodon keeps (`p`, `a`, `br`, `strong`, `em`, `ul`, `ol`, `li`), and all track and artist text is escaped. Each post also gets hashtags (`#NowPlaying`, `#Scrobbler`) as `Hashtag` tags. Visibility follows the user's setting, which defaults to **followers only**:
 
 | Setting | `to` | `cc` |
 |---|---|---|
-| Public | `as:Public` | followers |
+| Followers only (default) | followers | *(none)* |
 | Unlisted | followers | `as:Public` |
-| Followers only | followers | *(none)* |
+| Public | `as:Public` | followers |
+
+What followers-only means in practice:
+
+- Posts go only to followers' servers, which show them only to followers.
+- They don't appear in the public outbox or on the profile for anyone else.
+- They can't be boosted.
+- Changing the setting affects new posts only: already-published posts keep the visibility they were sent with.
 
 ### Weekly summary
 
@@ -250,7 +266,7 @@ A new post for every track would flood followers' timelines. There are two optio
 
 1. **Profile field (recommended default)**: a "Now playing: *Reckoner* by Radiohead" field on the profile. The field is updated with an `Update(Person)` when the track changes, at most once every 5 minutes, and cleared when playback stops. Nothing appears in timelines; followers see it on the profile. This option is cheap and quiet.
 2. **Posts (opt-in)**: a `Note` when a track starts, at most one every 30 minutes, and only for tracks played for at least 30 seconds.
-   - It uses the user's visibility setting, with a suggested default of *followers only* for these.
+   - It uses the user's visibility setting (followers only by default).
    - Optionally, the previous now-playing post is deleted when the next one goes out, so only one exists at a time.
 
 ## Build or buy
@@ -356,12 +372,15 @@ This is the "profiles plus friends' listening" option, deliberately left out of 
 
 Settled so far: **build it ourselves** (the project is BSD-3-Clause), inside **one replaceable module**.
 
-Still open:
+Also settled:
 
-1. **Domain.** Handles on the UI's domain (nginx forwards `/.well-known/webfinger`) or on the API's? Both are supported; this is a deployment choice, but it's permanent once people follow.
-2. **Default visibility** for summaries and milestones: *Unlisted* (recommended) or *Public*?
-3. **Now-playing default** once a user turns it on: the profile field (recommended), or posts?
-4. **Does it need an admin?** Phase 2 assumes domain blocks set in configuration. A real moderation UI (reports, per-domain policies) would be a separate piece of work.
+- **Domain: the UI's.** Handles and actor URLs are both on the UI host, and the UI's nginx forwards the ActivityPub paths to the API.
+- **Visibility: followers only by default**, and each user can change it on their Sharing settings.
+
+Still open (neither is needed before phase 3):
+
+1. **Now-playing default** once a user turns it on: the profile field (recommended), or posts?
+2. **Does it need an admin?** Phase 2 assumes domain blocks set in configuration. A real moderation UI (reports, per-domain policies) would be a separate piece of work.
 
 ## Sources
 
