@@ -32,12 +32,14 @@ def approved_follower(fed_client, remote, sharing_user, name):
     return account
 
 
-def test_publish_creates_a_post_and_a_create_activity(fed_ctx, user):
+def test_publish_creates_a_post_and_a_create_activity(fed_ctx, user, metric_delta):
     sharing.update(user.id, {"enabled": True})
+    posted = metric_delta("scrobbler_federation_posts_total", kind="weekly", visibility="followers")
     post = publishing.publish(
         user.id, "alice", "weekly", "2026-W01", text="312 plays", html="<p>312 plays</p>"
     )
     assert post is not None
+    assert posted.delta == 1
     assert (post.kind, post.key, post.content_text) == ("weekly", "weekly:2026-W01", "312 plays")
     assert post.visibility == "followers"
     assert post.deleted_at is None
@@ -138,12 +140,13 @@ def test_publish_with_no_followers_still_creates_the_post(fed_ctx, user):
     assert deliveries_for(post.activity_id) == []
 
 
-def test_delete_post_sends_delete_and_tombstones(fed_client, remote, sharing_user):
+def test_delete_post_sends_delete_and_tombstones(fed_client, remote, sharing_user, metric_delta):
     bob = approved_follower(fed_client, remote, sharing_user, "bob")
     post = publishing.publish(
         sharing_user.id, "alice", "weekly", "2026-W01", text="x", html="<p>x</p>"
     )
     note_id = db.session.get(FederationActivity, post.activity_id).document["object"]["id"]
+    deleted = metric_delta("scrobbler_federation_post_deletions_total", reason="manual")
     activity = publishing.delete_post(sharing_user.id, "alice", post)
     db.session.commit()
 
@@ -152,6 +155,7 @@ def test_delete_post_sends_delete_and_tombstones(fed_client, remote, sharing_use
     assert activity.document["object"] == {"id": note_id, "type": "Tombstone"}
     assert db.session.get(FederationPost, post.id).deleted_at is not None
     assert [d.inbox for d in deliveries_for(activity.id)] == [bob.server.url("/inbox")]
+    assert deleted.delta == 1
 
 
 def test_deleting_an_already_deleted_post_is_a_noop(fed_ctx, user):
@@ -175,7 +179,7 @@ def test_delete_uses_the_posts_own_visibility_not_the_current_setting(fed_ctx, u
     assert activity.document["to"] == [PUBLIC]  # still addressed as it was posted
 
 
-def test_delete_all_for_deletes_every_live_post(fed_ctx, user):
+def test_delete_all_for_deletes_every_live_post(fed_ctx, user, metric_delta):
     sharing.update(user.id, {"enabled": True})
     a = publishing.publish(user.id, "alice", "weekly", "2026-W01", text="a", html="a")
     b = publishing.publish(user.id, "alice", "milestone", "scrobbles:1000", text="b", html="b")
@@ -183,10 +187,12 @@ def test_delete_all_for_deletes_every_live_post(fed_ctx, user):
     publishing.delete_post(user.id, "alice", already_deleted)
     db.session.commit()
 
+    sharing_off = metric_delta("scrobbler_federation_post_deletions_total", reason="sharing_off")
     count = publishing.delete_all_for(user.id, "alice")
     db.session.commit()
 
     assert count == 2  # not the one already deleted
+    assert sharing_off.delta == 2
     assert db.session.get(FederationPost, a.id).deleted_at is not None
     assert db.session.get(FederationPost, b.id).deleted_at is not None
     # 3 Deletes total: one from the already_deleted post above, plus a and b just now

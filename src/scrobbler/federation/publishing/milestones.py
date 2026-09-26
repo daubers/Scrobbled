@@ -12,6 +12,7 @@ never gets a burst of "congratulations" for plays from years ago.
 import logging
 
 from scrobbler.extensions import db
+from scrobbler.federation import metrics as fed_metrics
 from scrobbler.federation import publishing, sharing
 from scrobbler.federation.models import FederationMilestoneMark, FederationPendingCheck
 from scrobbler.federation.protocol import content
@@ -132,6 +133,12 @@ def check_and_post(user_id: int) -> str:
     """For one user, post at most one milestone: the first of scrobble-count, top-10
     entry, or artist-plays (in that priority) that has a new, unmarked threshold to
     report. Returns a result: disabled, none or posted."""
+    result = _check_and_post(user_id)
+    fed_metrics.milestone_checks_total.labels(result=result).inc()
+    return result
+
+
+def _check_and_post(user_id: int) -> str:
     settings = sharing.settings_for(user_id)
     if not (settings.enabled and settings.post_milestones):
         return "disabled"

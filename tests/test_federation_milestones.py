@@ -52,15 +52,19 @@ def test_nothing_reached_posts_nothing(fed_ctx, user, sharing_settings):
     assert posts_for(user.id) == []
 
 
-def test_a_scrobble_count_threshold_is_posted(fed_ctx, user, sharing_settings, monkeypatch):
+def test_a_scrobble_count_threshold_is_posted(
+    fed_ctx, user, sharing_settings, monkeypatch, metric_delta
+):
     monkeypatch.setattr(milestones, "SCROBBLE_THRESHOLDS", [3])
     played(user, "Radiohead", "Reckoner", n=3)
+    posted = metric_delta("scrobbler_federation_milestone_checks_total", result="posted")
     outcome = milestones.check_and_post(user.id)
     assert outcome == "posted"
     [post] = posts_for(user.id)
     assert post.key == "milestone:scrobbles:3"
     assert "3 plays scrobbled" in post.content_text
     assert marks_for(user.id) == {"scrobbles:3": True}
+    assert posted.delta == 1
 
 
 def test_checking_twice_only_posts_once(fed_ctx, user, sharing_settings, monkeypatch):

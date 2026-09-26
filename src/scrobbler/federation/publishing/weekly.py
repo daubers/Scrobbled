@@ -11,6 +11,7 @@ import logging
 from datetime import UTC, datetime
 
 from scrobbler.extensions import db
+from scrobbler.federation import metrics as fed_metrics
 from scrobbler.federation import publishing, sharing
 from scrobbler.federation.models import FederationSettings
 from scrobbler.federation.protocol import content, schedule
@@ -61,6 +62,12 @@ def build_content(count: int, top_artists: list, top_tracks: list) -> tuple[str,
 def check_and_post(settings: FederationSettings, now_utc: datetime) -> str:
     """For one user's settings, post their most recent eligible week if it's due and not
     already posted. Returns a result: disabled, already_posted, skipped_empty or posted."""
+    result = _check_and_post(settings, now_utc)
+    fed_metrics.weekly_total.labels(result=result).inc()
+    return result
+
+
+def _check_and_post(settings: FederationSettings, now_utc: datetime) -> str:
     if not settings.post_weekly_summary:
         return "disabled"
     user = accounts.get_user(settings.user_id)

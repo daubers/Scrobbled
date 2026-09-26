@@ -42,9 +42,10 @@ def test_an_empty_week_is_not_posted(fed_ctx, user, sharing_settings):
     assert posts_for(user.id) == []
 
 
-def test_a_week_with_plays_is_posted(fed_ctx, user, sharing_settings):
+def test_a_week_with_plays_is_posted(fed_ctx, user, sharing_settings, metric_delta):
     a_scrobble_in_the_target_week(user)
     a_scrobble_in_the_target_week(user, hour=13)
+    posted = metric_delta("scrobbler_federation_weekly_total", result="posted")
     outcome = weekly.check_and_post(sharing_settings, GATE)
     assert outcome == "posted"
     [post] = posts_for(user.id)
@@ -52,6 +53,7 @@ def test_a_week_with_plays_is_posted(fed_ctx, user, sharing_settings):
     assert "2 plays" in post.content_text
     activity = db.session.get(FederationActivity, post.activity_id)
     assert activity.activity_type == "Create"
+    assert posted.delta == 1
 
 
 def test_checking_twice_only_posts_once(fed_ctx, user, sharing_settings):

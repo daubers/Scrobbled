@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 
 from scrobbler.extensions import db
 from scrobbler.federation import activities, followers, ids, sharing
+from scrobbler.federation import metrics as fed_metrics
 from scrobbler.federation.models import FederationActivity, FederationPost
 from scrobbler.federation.protocol import addressing, vocab
 
@@ -141,6 +142,7 @@ def publish(
     except IntegrityError:  # posted with this key by a concurrent pass
         db.session.rollback()
         return None
+    fed_metrics.posts_total.labels(kind=kind, visibility=settings.visibility).inc()
     return post
 
 
@@ -150,7 +152,7 @@ def delete_post(user_id: int, username: str, post: FederationPost) -> Federation
     None if it's already deleted."""
     if post.deleted_at is not None:
         return None
-    return _delete(user_id, username, post)
+    return _delete(user_id, username, post, reason="manual")
 
 
 def delete_all_for(user_id: int, username: str) -> int:
@@ -161,11 +163,13 @@ def delete_all_for(user_id: int, username: str) -> int:
         db.select(FederationPost).filter_by(user_id=user_id, deleted_at=None)
     ).all()
     for post in posts:
-        _delete(user_id, username, post)
+        _delete(user_id, username, post, reason="sharing_off")
     return len(posts)
 
 
-def _delete(user_id: int, username: str, post: FederationPost) -> FederationActivity:
+def _delete(
+    user_id: int, username: str, post: FederationPost, *, reason: str
+) -> FederationActivity:
     # The post's own visibility at the time it was posted, not the user's current
     # setting: a Delete has to reach whoever could have seen the Create.
     note_id = post.activity.document["object"]["id"]
@@ -179,4 +183,5 @@ def _delete(user_id: int, username: str, post: FederationPost) -> FederationActi
     if inboxes:
         activities.queue(activity, inboxes)
     post.deleted_at = _now()
+    fed_metrics.post_deletions_total.labels(reason=reason).inc()
     return activity

@@ -51,3 +51,23 @@ followers = Gauge(
     ["state"],
     multiprocess_mode="max",
 )
+posts_total = Counter(
+    "scrobbler_federation_posts_total",
+    "Posts published: weekly summaries and milestones",
+    ["kind", "visibility"],
+)
+post_deletions_total = Counter(
+    "scrobbler_federation_post_deletions_total",
+    "Posts deleted, by reason",
+    ["reason"],
+)
+milestone_checks_total = Counter(
+    "scrobbler_federation_milestone_checks_total",
+    "Milestone checks, by result: disabled, none or posted",
+    ["result"],
+)
+weekly_total = Counter(
+    "scrobbler_federation_weekly_total",
+    "Weekly summary checks, by result: disabled, skipped_empty, already_posted or posted",
+    ["result"],
+)

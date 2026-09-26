@@ -89,6 +89,14 @@ groups:
           summary: Received fediverse activities haven't been processed for 15 minutes
           description: The worker is probably stopped, or stuck on something.
 
+      - alert: FederationWeeklySummariesMissing
+        expr: sum(increase(scrobbler_worker_tasks_total{task="federation.weekly"}[30m])) == 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: The weekly summary check hasn't run in 30 minutes
+          description: federation.weekly runs every 15 minutes regardless of whether anyone is due a post; the worker is probably stopped or stuck.
+
       - alert: FederationSignatureFailures
         expr: |
           sum(rate(scrobbler_federation_signatures_total{direction="in",result!="ok"}[15m]))
