@@ -3,6 +3,9 @@ from urllib.parse import urlsplit
 
 import pytest
 
+from scrobbler.extensions import db
+from scrobbler.federation import publishing, sharing
+
 AP = {"Accept": "application/activity+json"}
 BASE = "https://scrobble.test"
 
@@ -79,13 +82,95 @@ def test_browsers_are_sent_to_the_profile_page(fed_client, sharing_user, usernam
 
 def test_collections(fed_client, sharing_user):
     outbox = fed_client.get("/users/alice/outbox", headers=AP).get_json()
-    assert (outbox["type"], outbox["totalItems"], outbox["orderedItems"]) == (
+    assert (outbox["type"], outbox["totalItems"], outbox["first"]) == (
         "OrderedCollection",
         0,
-        [],
+        f"{BASE}/users/alice/outbox?page=1",
     )
+    assert "orderedItems" not in outbox  # paged: points at the first page instead
     followers = fed_client.get("/users/alice/followers", headers=AP).get_json()
     assert followers["totalItems"] == 0 and "orderedItems" not in followers
+
+
+def test_outbox_paging_lists_public_and_unlisted_but_not_followers_only(
+    fed_client, fed_ctx, sharing_user
+):
+    sharing.update(sharing_user.id, {"visibility": "public"})
+    publishing.publish(sharing_user.id, "alice", "weekly", "a", text="first", html="<p>first</p>")
+    sharing.update(sharing_user.id, {"visibility": "unlisted"})
+    publishing.publish(sharing_user.id, "alice", "weekly", "b", text="second", html="<p>second</p>")
+    sharing.update(sharing_user.id, {"visibility": "followers"})
+    publishing.publish(sharing_user.id, "alice", "weekly", "c", text="third", html="<p>third</p>")
+
+    root = fed_client.get("/users/alice/outbox", headers=AP).get_json()
+    assert root["totalItems"] == 2  # the followers-only one isn't counted here
+
+    page = fed_client.get("/users/alice/outbox?page=1", headers=AP).get_json()
+    assert page["type"] == "OrderedCollectionPage"
+    assert page["partOf"] == f"{BASE}/users/alice/outbox"
+    # Newest first: "second" (unlisted) was published after "first" (public).
+    assert [item["object"]["content"] for item in page["orderedItems"]] == [
+        "<p>second</p>",
+        "<p>first</p>",
+    ]
+    assert "next" not in page
+    assert "prev" not in page
+
+
+def test_outbox_paging_links(fed_client, fed_ctx, sharing_user, monkeypatch):
+    monkeypatch.setattr(publishing, "OUTBOX_PAGE_SIZE", 1)
+    sharing.update(sharing_user.id, {"visibility": "public"})
+    for key in ("a", "b"):
+        publishing.publish(sharing_user.id, "alice", "weekly", key, text="t", html="<p>t</p>")
+
+    first = fed_client.get("/users/alice/outbox?page=1", headers=AP).get_json()
+    assert len(first["orderedItems"]) == 1
+    assert first["next"] == f"{BASE}/users/alice/outbox?page=2"
+    assert "prev" not in first
+
+    second = fed_client.get("/users/alice/outbox?page=2", headers=AP).get_json()
+    assert len(second["orderedItems"]) == 1
+    assert "next" not in second
+    assert second["prev"] == f"{BASE}/users/alice/outbox?page=1"
+
+
+def test_outbox_missing_user_is_not_found(fed_client, fed_ctx):
+    assert fed_client.get("/users/nobody/outbox", headers=AP).status_code == 404
+    assert fed_client.get("/users/nobody/outbox?page=1", headers=AP).status_code == 404
+
+
+def test_post_note_serves_a_public_note(fed_client, fed_ctx, sharing_user):
+    sharing.update(sharing_user.id, {"visibility": "public"})
+    post = publishing.publish(sharing_user.id, "alice", "weekly", "a", text="t", html="<p>t</p>")
+
+    note_uuid = post.activity.document["object"]["id"].rsplit("/", 1)[-1]
+    response = fed_client.get(f"/users/alice/posts/{note_uuid}", headers=AP)
+    assert response.status_code == 200
+    doc = response.get_json()
+    assert (doc["type"], doc["content"]) == ("Note", "<p>t</p>")
+
+
+def test_post_note_404s_for_followers_only_deleted_or_unknown(fed_client, fed_ctx, sharing_user):
+    post = publishing.publish(sharing_user.id, "alice", "weekly", "a", text="t", html="<p>t</p>")
+    note_uuid = post.activity.document["object"]["id"].rsplit("/", 1)[-1]
+    # followers-only (the default): not listed to an unauthenticated fetch
+    assert fed_client.get(f"/users/alice/posts/{note_uuid}", headers=AP).status_code == 404
+
+    sharing.update(post.user_id, {"visibility": "public"})
+    publishing.delete_post(post.user_id, "alice", post)
+    db.session.commit()
+    assert fed_client.get(f"/users/alice/posts/{note_uuid}", headers=AP).status_code == 404
+
+    assert fed_client.get("/users/alice/posts/not-a-real-uuid", headers=AP).status_code == 404
+    assert fed_client.get("/users/nobody/posts/not-a-real-uuid", headers=AP).status_code == 404
+
+
+def test_post_note_browser_is_redirected_to_the_ui_page(fed_client, fed_ctx, sharing_user):
+    post = publishing.publish(sharing_user.id, "alice", "weekly", "a", text="t", html="<p>t</p>")
+    note_uuid = post.activity.document["object"]["id"].rsplit("/", 1)[-1]
+    response = fed_client.get(f"/users/alice/posts/{note_uuid}", headers={"Accept": "text/html"})
+    assert response.status_code == 302
+    assert response.headers["Location"] == f"http://localhost:8080/post.html?id={note_uuid}"
 
 
 def test_nodeinfo(fed_client, sharing_user):

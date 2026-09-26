@@ -2543,11 +2543,11 @@
           "ActivityPub"
         ],
         "summary": "Outbox",
-        "description": "The user's published activities.",
+        "description": "The user's public and unlisted posts (followers-only posts are never listed here, since this endpoint isn't authenticated). Without `page`, an OrderedCollection pointing at the first page; with it, an OrderedCollectionPage of up to 20 `Create`s, newest first.",
         "operationId": "federation_outbox",
         "responses": {
           "200": {
-            "description": "OrderedCollection",
+            "description": "OrderedCollection or OrderedCollectionPage",
             "content": {
               "application/activity+json": {
                 "schema": {
@@ -2568,6 +2568,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
           }
         ]
       },
@@ -2575,6 +2584,72 @@
         {
           "in": "path",
           "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/users/{username}/posts/{post_uuid}": {
+      "get": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "Post",
+        "description": "One public or unlisted post's `Note`, when asked for ActivityPub JSON; browsers are redirected to the web UI's post page. Followers-only and deleted posts answer 404 here (they're delivered directly to followers instead).",
+        "operationId": "federation_post_note",
+        "responses": {
+          "200": {
+            "description": "Note",
+            "content": {
+              "application/activity+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "302": {
+            "description": "Redirect to the post page (non-ActivityPub Accept)"
+          },
+          "404": {
+            "description": "Not found, not listed, or deleted"
+          }
+        },
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "post_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        {
+          "in": "path",
+          "name": "post_uuid",
           "required": true,
           "schema": {
             "type": "string",

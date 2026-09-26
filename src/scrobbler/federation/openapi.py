@@ -93,9 +93,42 @@ _OPERATIONS = {
     "federation.outbox": (
         "get",
         "Outbox",
-        "The user's published activities.",
-        [_USERNAME],
-        {"200": {"description": "OrderedCollection", "content": _AP}, "404": _NOT_FOUND},
+        "The user's public and unlisted posts (followers-only posts are never listed "
+        "here, since this endpoint isn't authenticated). Without `page`, an "
+        "OrderedCollection pointing at the first page; with it, an OrderedCollectionPage "
+        "of up to 20 `Create`s, newest first.",
+        [
+            _USERNAME,
+            {
+                "name": "page",
+                "in": "query",
+                "required": False,
+                "schema": {"type": "integer", "minimum": 1},
+            },
+        ],
+        {
+            "200": {
+                "description": "OrderedCollection or OrderedCollectionPage",
+                "content": _AP,
+            },
+            "404": _NOT_FOUND,
+        },
+    ),
+    "federation.post_note": (
+        "get",
+        "Post",
+        "One public or unlisted post's `Note`, when asked for ActivityPub JSON; browsers "
+        "are redirected to the web UI's post page. Followers-only and deleted posts "
+        "answer 404 here (they're delivered directly to followers instead).",
+        [
+            _USERNAME,
+            {"name": "post_uuid", "in": "path", "required": True, "schema": {"type": "string"}},
+        ],
+        {
+            "200": {"description": "Note", "content": _AP},
+            "302": {"description": "Redirect to the post page (non-ActivityPub Accept)"},
+            "404": {"description": "Not found, not listed, or deleted"},
+        },
     ),
     "federation.followers": (
         "get",

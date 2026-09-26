@@ -8,7 +8,7 @@ from flask import Blueprint, Response, current_app, redirect, request
 
 from scrobbler.extensions import db
 from scrobbler.federation import followers as follower_state
-from scrobbler.federation import inbox, keys, sharing
+from scrobbler.federation import ids, inbox, keys, publishing, sharing
 from scrobbler.federation import metrics as fed_metrics
 from scrobbler.federation.models import FederationActivity
 from scrobbler.federation.protocol import hostmeta, media, nodeinfo, vocab, webfinger
@@ -155,7 +155,51 @@ def _collection(username: str, which: str, items: list | None, total: int = 0):
 
 @bp.get("/users/<username>/outbox")
 def outbox(username: str):
-    return _collection(username, "outbox", [])
+    found = sharing.shared_user(username)
+    if found is None:
+        return _not_found("actor")
+    urls = _urls(found[0].username)
+    page_param = request.args.get("page")
+    if page_param is None:
+        total = publishing.outbox_page(found[0].id, page=1)[1]
+        return _json(vocab.ordered_collection(urls.outbox, total, first=f"{urls.outbox}?page=1"))
+
+    try:
+        page = max(int(page_param), 1)
+    except ValueError:
+        page = 1
+    per_page = publishing.OUTBOX_PAGE_SIZE
+    items, total = publishing.outbox_page(found[0].id, page, per_page=per_page)
+    next_page = f"{urls.outbox}?page={page + 1}" if page * per_page < total else None
+    prev_page = f"{urls.outbox}?page={page - 1}" if page > 1 else None
+    return _json(
+        vocab.ordered_collection_page(
+            f"{urls.outbox}?page={page}",
+            part_of=urls.outbox,
+            items=items,
+            next_page=next_page,
+            prev_page=prev_page,
+        )
+    )
+
+
+@bp.get("/users/<username>/posts/<post_uuid>")
+def post_note(username: str, post_uuid: str):
+    if not media.wants_activitypub(request.headers.get("Accept")):
+        # Same reasoning as actor(): redirect everyone, so the response can't be used to
+        # probe which posts exist.
+        return redirect(ids.post_page_url(username, post_uuid), code=302)
+    found = sharing.shared_user(username)
+    if found is None:
+        return _not_found("post")
+    post = publishing.find_by_note_id(found[0].id, ids.note_url(username, post_uuid))
+    if (
+        post is None
+        or post.deleted_at is not None
+        or post.visibility not in publishing.LISTED_VISIBILITIES
+    ):
+        return _not_found("post")
+    return _json(post.activity.document["object"], cache=60)
 
 
 @bp.get("/users/<username>/followers")

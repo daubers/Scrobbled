@@ -18,10 +18,52 @@ from scrobbler.federation.models import FederationActivity, FederationPost
 from scrobbler.federation.protocol import addressing, vocab
 
 DEFAULT_TAGS = ("Scrobbler",)
+OUTBOX_PAGE_SIZE = 20
+LISTED_VISIBILITIES = ("public", "unlisted")  # followers-only posts aren't listed unauthenticated
 
 
 def _now() -> datetime:
     return datetime.now(UTC)
+
+
+def _listed(user_id: int):
+    return (
+        FederationPost.user_id == user_id,
+        FederationPost.deleted_at.is_(None),
+        FederationPost.visibility.in_(LISTED_VISIBILITIES),
+    )
+
+
+def outbox_page(
+    user_id: int, page: int, per_page: int = OUTBOX_PAGE_SIZE
+) -> tuple[list[dict], int]:
+    """Create documents for a user's outbox: public and unlisted posts only, newest
+    first, paged. `page` is 1-based."""
+    conditions = _listed(user_id)
+    total = db.session.scalar(
+        db.select(db.func.count()).select_from(FederationPost).filter(*conditions)
+    )
+    rows = db.session.scalars(
+        db.select(FederationActivity)
+        .join(FederationPost, FederationPost.activity_id == FederationActivity.id)
+        .filter(*conditions)
+        .order_by(FederationActivity.created_at.desc())
+        .limit(per_page)
+        .offset((page - 1) * per_page)
+    ).all()
+    return [row.document for row in rows], total
+
+
+def find_by_note_id(user_id: int, note_id: str) -> FederationPost | None:
+    """The post whose Note has this id (the URL served at /users/<u>/posts/<uuid>)."""
+    return db.session.scalar(
+        db.select(FederationPost)
+        .join(FederationActivity, FederationActivity.id == FederationPost.activity_id)
+        .filter(
+            FederationPost.user_id == user_id,
+            FederationActivity.document["object"]["id"].as_string() == note_id,
+        )
+    )
 
 
 def has_post(user_id: int, kind: str, key: str) -> bool:

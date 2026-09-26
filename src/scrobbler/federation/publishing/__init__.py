@@ -3,6 +3,24 @@ later now-playing. Shared machinery — idempotent publishing, addressing, fan-o
 deletion — lives in base.py.
 """
 
-from scrobbler.federation.publishing.base import delete_all_for, delete_post, has_post, publish
+from scrobbler.federation.publishing.base import (
+    LISTED_VISIBILITIES,
+    OUTBOX_PAGE_SIZE,
+    delete_all_for,
+    delete_post,
+    find_by_note_id,
+    has_post,
+    outbox_page,
+    publish,
+)
 
-__all__ = ["delete_all_for", "delete_post", "has_post", "publish"]
+__all__ = [
+    "LISTED_VISIBILITIES",
+    "OUTBOX_PAGE_SIZE",
+    "delete_all_for",
+    "delete_post",
+    "find_by_note_id",
+    "has_post",
+    "outbox_page",
+    "publish",
+]
