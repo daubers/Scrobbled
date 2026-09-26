@@ -15,7 +15,13 @@ NOW_PLAYING_FIELD = "Now playing"
 
 def now_playing_field(user) -> list[tuple[str, str]]:
     """The actor's now-playing `PropertyValue` field. Empty when nothing's playing
-    (`get_now_playing` already excludes expired tracks)."""
+    (`get_now_playing` already excludes expired tracks).
+
+    Doesn't look at the user's now_playing_mode: core's now_playing table is populated
+    for every user regardless of federation settings, so a caller must gate this itself
+    (build_document does) rather than leak listening activity for users who never turned
+    now playing on at all.
+    """
     playing = get_now_playing(user)
     if playing is None:
         return []
@@ -23,6 +29,7 @@ def now_playing_field(user) -> list[tuple[str, str]]:
 
 
 def build_document(urls: vocab.ActorUrls, user, settings) -> dict:
+    fields = now_playing_field(user) if settings.now_playing_mode != "off" else []
     return vocab.person(
         urls,
         username=user.username,
@@ -33,5 +40,5 @@ def build_document(urls: vocab.ActorUrls, user, settings) -> dict:
         discoverable=settings.discoverable,
         indexable=settings.indexable,
         published=settings.created_at.isoformat().replace("+00:00", "Z"),
-        fields=now_playing_field(user),
+        fields=fields,
     )

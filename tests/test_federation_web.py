@@ -72,11 +72,22 @@ def test_actor_document(fed_client, sharing_user):
 def test_actor_document_shows_now_playing_live(fed_client, fed_ctx, sharing_user):
     from scrobbler.services.scrobbles import TrackInput, update_now_playing
 
+    sharing.update(sharing_user.id, {"now_playing_mode": "profile"})
     update_now_playing(sharing_user, TrackInput(artist="Radiohead", track="Reckoner"))
     doc = fed_client.get("/users/alice", headers=AP).get_json()
     assert doc["attachment"] == [
         {"type": "PropertyValue", "name": "Now playing", "value": "Reckoner by Radiohead"}
     ]
+
+
+def test_actor_document_never_shows_now_playing_when_the_mode_is_off(
+    fed_client, fed_ctx, sharing_user
+):
+    from scrobbler.services.scrobbles import TrackInput, update_now_playing
+
+    update_now_playing(sharing_user, TrackInput(artist="Radiohead", track="Reckoner"))
+    doc = fed_client.get("/users/alice", headers=AP).get_json()
+    assert doc["attachment"] == []
 
 
 def test_ids_come_from_config_not_the_request(fed_client, sharing_user):

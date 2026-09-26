@@ -20,7 +20,10 @@ def test_now_playing_field_shows_the_current_track(fed_ctx, user):
 
 
 def test_build_document_includes_the_now_playing_field(fed_ctx, user):
-    sharing.update(user.id, {"enabled": True, "display_name": "Alice", "bio": "Hi."})
+    sharing.update(
+        user.id,
+        {"enabled": True, "display_name": "Alice", "bio": "Hi.", "now_playing_mode": "profile"},
+    )
     update_now_playing(user, TrackInput(artist="Radiohead", track="Reckoner"))
     settings = sharing.settings_for(user.id)
     doc = actors.build_document(URLS, user, settings)
@@ -30,7 +33,17 @@ def test_build_document_includes_the_now_playing_field(fed_ctx, user):
 
 
 def test_build_document_has_no_now_playing_field_when_idle(fed_ctx, user):
+    sharing.update(user.id, {"enabled": True, "now_playing_mode": "profile"})
+    settings = sharing.settings_for(user.id)
+    doc = actors.build_document(URLS, user, settings)
+    assert doc["attachment"] == []
+
+
+def test_build_document_never_shows_now_playing_when_the_mode_is_off(fed_ctx, user):
+    """now_playing_mode defaults to off; core's now_playing table is populated for every
+    user regardless, so a user who's never turned this on must never leak it."""
     sharing.update(user.id, {"enabled": True})
+    update_now_playing(user, TrackInput(artist="Radiohead", track="Reckoner"))
     settings = sharing.settings_for(user.id)
     doc = actors.build_document(URLS, user, settings)
     assert doc["attachment"] == []
