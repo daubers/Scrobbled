@@ -58,6 +58,9 @@ def update(user_id: int, changes: dict) -> tuple[FederationSettings, bool | None
     db.session.commit()
     if settings.enabled and not was_enabled:
         keys.key_for(user_id)  # create the key pair before anyone can fetch the actor
+        from scrobbler.federation.publishing import milestones
+
+        milestones.set_baseline(user_id)  # history already on file isn't a "milestone"
     toggled = None if settings.enabled == was_enabled else bool(settings.enabled)
     return settings, toggled
 

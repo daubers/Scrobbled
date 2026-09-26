@@ -16,6 +16,7 @@ import pytest
 
 from scrobbler import create_app, events, worker
 from scrobbler.config import TestConfig
+from scrobbler.extensions import db
 from scrobbler.federation.config import FederationConfigError
 
 SRC = Path(__file__).resolve().parents[1] / "src"
@@ -165,9 +166,24 @@ def test_nothing_is_registered_when_federation_is_off(app):
     assert app.extensions["federation"].enabled is False
     views = [view for view in app.view_functions.values() if _from_federation(view)]
     assert views == []
-    for signal in (events.scrobbles_stored, events.now_playing_changed, events.import_finished):
-        assert not any(_from_federation(r) for r in signal.receivers_for(None))
     assert not any(name.startswith("federation") for name in worker.registered(app))
+
+
+def test_federation_event_receivers_are_no_ops_when_this_app_is_off(app, make_user):
+    """Receivers connect to blinker's process-wide signals, which have no notion of
+    "app": once any app in this test process enables federation (fed_app, or the
+    create_app(_Enabled) calls below), the signal keeps those receivers connected for
+    the rest of the run, whatever this test's own `app` says. So "off" can't be shown by
+    an absence of receivers — it's enforced by each receiver checking *this app's own*
+    config at call time. Firing an event inside this off app's context must therefore
+    still be a no-op, whatever else has already run in the process."""
+    from scrobbler.federation.models import FederationPendingCheck
+
+    assert app.extensions["federation"].enabled is False
+    user = make_user()
+    events.send(events.scrobbles_stored, user, scrobbles=["placeholder"], source="scrobble")
+    events.send(events.import_finished, user, job=None)
+    assert db.session.get(FederationPendingCheck, user.id) is None
 
 
 class _Enabled(TestConfig):

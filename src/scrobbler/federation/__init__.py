@@ -36,12 +36,21 @@ def init_app(app: Flask) -> None:
     core_api.register_blueprint(api.blp, url_prefix="/api/v1/federation")
     openapi.register(app, core_api)
 
-    from scrobbler import worker
+    from scrobbler import events, worker
     from scrobbler.federation import delivery, inbox
-    from scrobbler.federation.publishing import weekly
+    from scrobbler.federation.publishing import milestones, weekly
 
     worker.register_task(app, "federation.inbox", inbox.work_once)
     worker.register_task(app, "federation.deliver", delivery.work_once)
+    worker.register_task(app, "federation.milestones", milestones.work_once)
     worker.register_periodic(app, "federation.inbox.maintenance", 300, inbox.maintenance)
     worker.register_periodic(app, "federation.gauges", 30, delivery.maintenance)
     worker.register_periodic(app, "federation.weekly", 900, weekly.check_all)
+
+    # blinker signals are process-wide, not per-app: once any app in a process enables
+    # federation these stay connected for every app in it, including one built with
+    # federation off (see test_federation_boundary.py for why "off" is instead enforced
+    # by each receiver checking its own app's config). weak=False because the receivers
+    # are plain module functions meant to live as long as the process does.
+    events.scrobbles_stored.connect(milestones.on_scrobbles_stored, weak=False)
+    events.import_finished.connect(milestones.on_import_finished, weak=False)
