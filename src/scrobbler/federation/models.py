@@ -40,6 +40,10 @@ class FederationSettings(db.Model):
     indexable: Mapped[bool] = mapped_column(Boolean, default=False)
     display_name: Mapped[str | None] = mapped_column(String(100))
     bio: Mapped[str | None] = mapped_column(Text)
+    # An IANA zone name (validated with zoneinfo), used to decide when a Monday starts.
+    timezone: Mapped[str] = mapped_column(String(64), default="UTC")
+    post_weekly_summary: Mapped[bool] = mapped_column(Boolean, default=True)
+    post_milestones: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
@@ -187,3 +191,59 @@ class FederationDelivery(db.Model):
         UniqueConstraint("activity_id", "inbox", name="uq_federation_delivery"),
         Index("ix_federation_deliveries_due", "status", "next_attempt_at"),
     )
+
+
+class FederationPost(db.Model):
+    """A published Note (weekly summary or milestone), wrapped in the Create activity it
+    was sent with. One row per (user, key): the unique constraint is what makes posting
+    idempotent, since a key like `weekly:2026-W39` can only be inserted once."""
+
+    __tablename__ = "federation_posts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(16))  # weekly or milestone
+    key: Mapped[str] = mapped_column(String(64))  # e.g. weekly:2026-W39, milestone:scrobbles:10000
+    activity_id: Mapped[str] = mapped_column(
+        ForeignKey("federation_activities.id", ondelete="CASCADE"), unique=True
+    )
+    visibility: Mapped[str] = mapped_column(String(16))  # as posted; unaffected by later changes
+    content_text: Mapped[str] = mapped_column(Text)
+    content_html: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    activity: Mapped[FederationActivity] = relationship(lazy="joined")
+
+    __table_args__ = (UniqueConstraint("user_id", "key", name="uq_federation_post_key"),)
+
+
+class FederationMilestoneMark(db.Model):
+    """A milestone threshold a user has reached. `posted=False` for thresholds passed
+    silently (the baseline set when a user enables sharing, or after an import finishes)
+    so they're marked done without ever producing a post."""
+
+    __tablename__ = "federation_milestone_marks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    key: Mapped[str] = mapped_column(String(64))  # e.g. scrobbles:10000, artist:radiohead:500
+    posted: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (UniqueConstraint("user_id", "key", name="uq_federation_milestone_mark"),)
+
+
+class FederationPendingCheck(db.Model):
+    """A user whose milestones need checking, queued by the scrobbles_stored event
+    receiver and drained by the worker. One row per user: further scrobbles before the
+    worker gets to it just update `since`, so scrobbling stays fast and the receiver never
+    does real work inside a scrobble request."""
+
+    __tablename__ = "federation_pending_checks"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    since: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    reason: Mapped[str] = mapped_column(String(32), default="scrobble")
