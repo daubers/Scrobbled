@@ -47,11 +47,18 @@ def since(period: str, now: datetime | None = None) -> datetime | None:
     return None if days is None else (now or datetime.now(UTC)) - timedelta(days=days)
 
 
-def _user_scrobbles(user: User, period: str = "overall"):
+def _between(user: User, start: datetime | None, end: datetime | None):
+    """user_id plus an optional window: start inclusive, end exclusive."""
     conditions = [Scrobble.user_id == user.id]
-    if (start := since(period)) is not None:
+    if start is not None:
         conditions.append(Scrobble.played_at >= start)
+    if end is not None:
+        conditions.append(Scrobble.played_at < end)
     return conditions
+
+
+def _user_scrobbles(user: User, period: str = "overall"):
+    return _between(user, since(period), None)
 
 
 def _display(column):
@@ -160,6 +167,54 @@ def listen_counts(user: User, period: str = "1month", bucket: str = "day") -> li
             day += timedelta(days=1)
         counts = filled
     return [{"start": day, "count": count} for day, count in counts.items()]
+
+
+def scrobble_count_between(user: User, start: datetime, end: datetime) -> int:
+    """Total plays in [start, end)."""
+    return db.session.scalar(select(func.count()).where(*_between(user, start, end))) or 0
+
+
+def top_artists_between(
+    user: User, start: datetime, end: datetime, limit: int = 10
+) -> list[TopItem]:
+    """Top artists in [start, end), unpaginated (callers like weekly summaries want a
+    handful, not a full listing)."""
+    key = func.lower(Scrobble.artist)
+    plays = func.count().label("plays")
+    query = (
+        select(_display(Scrobble.artist), plays)
+        .where(*_between(user, start, end))
+        .group_by(key)
+        .order_by(plays.desc(), key)
+        .limit(limit)
+    )
+    rows = db.session.execute(query).all()
+    return [TopItem(i + 1, name, count) for i, (name, count) in enumerate(rows)]
+
+
+def top_tracks_between(
+    user: User, start: datetime, end: datetime, limit: int = 10
+) -> list[TopItem]:
+    """Top tracks in [start, end), unpaginated."""
+    keys = (func.lower(Scrobble.track), func.lower(Scrobble.artist))
+    plays = func.count().label("plays")
+    query = (
+        select(
+            _display(Scrobble.track),
+            _display(Scrobble.artist),
+            func.max(Scrobble.duration),
+            plays,
+        )
+        .where(*_between(user, start, end))
+        .group_by(*keys)
+        .order_by(plays.desc(), *keys)
+        .limit(limit)
+    )
+    rows = db.session.execute(query).all()
+    return [
+        TopItem(i + 1, name, count, artist=artist, duration=duration)
+        for i, (name, artist, duration, count) in enumerate(rows)
+    ]
 
 
 def summary(user: User) -> dict:
