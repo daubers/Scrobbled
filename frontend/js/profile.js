@@ -25,6 +25,9 @@ try {
     h("h1", {}, profile.display_name),
     h("div", { class: "approve-app handle" }, profile.handle),
     profile.bio ? h("p", { class: "lede profile-bio" }, profile.bio) : null,
+    profile.now_playing
+      ? h("p", { class: "now-playing" }, "Now playing: ", h("strong", {}, profile.now_playing))
+      : null,
     h("h2", { class: "profile-follow" }, "Follow from the fediverse"),
     h(
       "p",

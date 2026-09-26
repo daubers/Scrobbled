@@ -954,6 +954,14 @@ input {
   white-space: pre-line;
 }
 
+.now-playing {
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-control);
+  border-left: 4px solid var(--glow);
+  background: var(--paper-raised);
+  margin: 0.75rem 0;
+}
+
 .profile-follow {
   margin: 2rem 0 0.4rem;
 }

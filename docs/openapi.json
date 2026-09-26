@@ -4575,6 +4575,13 @@
               "null"
             ]
           },
+          "now_playing": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "\"Track by Artist\", or null"
+          },
           "handle": {
             "type": "string",
             "example": "@alice@scrobble.example"

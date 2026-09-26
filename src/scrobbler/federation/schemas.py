@@ -68,6 +68,9 @@ class PublicProfileSchema(Schema):
     username = fields.String()
     display_name = fields.String()
     bio = fields.String(allow_none=True)
+    now_playing = fields.String(
+        allow_none=True, metadata={"description": '"Track by Artist", or null'}
+    )
     handle = fields.String(metadata={"example": "@alice@scrobble.example"})
     actor_url = fields.String()
 

@@ -126,11 +126,29 @@ def test_public_profile(fed_client, sharing_user, make_user):
         "username": "alice",
         "display_name": "Alice",
         "bio": "Listening.",
+        "now_playing": None,
         "handle": "@alice@scrobble.test",
         "actor_url": "https://scrobble.test/users/alice",
     }
     make_user(username="bob")
     assert fed_client.get("/api/v1/federation/profiles/bob").status_code == 404
+
+
+def test_public_profile_shows_now_playing_when_the_mode_is_on(fed_client, fed_ctx, sharing_user):
+    from scrobbler.services.scrobbles import TrackInput, update_now_playing
+
+    sharing.update(sharing_user.id, {"now_playing_mode": "profile"})
+    update_now_playing(sharing_user, TrackInput(artist="Radiohead", track="Reckoner"))
+    body = fed_client.get("/api/v1/federation/profiles/alice").get_json()
+    assert body["now_playing"] == "Reckoner by Radiohead"
+
+
+def test_public_profile_hides_now_playing_when_the_mode_is_off(fed_client, fed_ctx, sharing_user):
+    from scrobbler.services.scrobbles import TrackInput, update_now_playing
+
+    update_now_playing(sharing_user, TrackInput(artist="Radiohead", track="Reckoner"))
+    body = fed_client.get("/api/v1/federation/profiles/alice").get_json()
+    assert body["now_playing"] is None
 
 
 def test_disabled_server_has_no_federation_api(client, auth):

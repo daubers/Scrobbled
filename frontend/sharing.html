@@ -84,6 +84,22 @@
       </fieldset>
 
       <fieldset class="choices">
+        <legend>Now playing</legend>
+        <div class="choice">
+          <input type="radio" id="np-off" name="now_playing_mode" value="off">
+          <label for="np-off"><strong>Off</strong><span class="muted">Nothing shown or posted.</span></label>
+        </div>
+        <div class="choice">
+          <input type="radio" id="np-profile" name="now_playing_mode" value="profile">
+          <label for="np-profile"><strong>Show on my profile</strong><span class="muted">A "Now playing" field, refreshed every few minutes and cleared when you stop.</span></label>
+        </div>
+        <div class="choice">
+          <input type="radio" id="np-posts" name="now_playing_mode" value="posts">
+          <label for="np-posts"><strong>Show on my profile and post</strong><span class="muted">The profile field, plus a post for each track played 30+ seconds, replacing the last one, at most every 30 minutes.</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="choices">
         <legend>Profile</legend>
         <div class="field">
           <label for="display_name">Display name</label>

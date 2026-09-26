@@ -5,7 +5,7 @@ from flask_smorest import Blueprint, abort
 
 from scrobbler.api.decorators import authenticated
 from scrobbler.extensions import db
-from scrobbler.federation import activities, ids, publishing, sharing
+from scrobbler.federation import activities, actors, ids, publishing, sharing
 from scrobbler.federation import followers as follower_state
 from scrobbler.federation import metrics as fed_metrics
 from scrobbler.federation.models import FederationBlock, FederationFollower, FederationPost
@@ -175,6 +175,9 @@ def public_profile(username):
         "username": user.username,
         "display_name": settings.display_name or user.username,
         "bio": settings.bio,
+        "now_playing": actors.now_playing_text(user)
+        if settings.now_playing_mode != "off"
+        else None,
         **{k: v for k, v in _identity(user.username).items() if k != "profile_url"},
     }
 

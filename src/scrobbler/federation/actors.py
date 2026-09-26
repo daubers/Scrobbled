@@ -13,23 +13,28 @@ from scrobbler.services.scrobbles import get_now_playing
 NOW_PLAYING_FIELD = "Now playing"
 
 
-def now_playing_field(user) -> list[tuple[str, str]]:
-    """The actor's now-playing `PropertyValue` field. Empty when nothing's playing
-    (`get_now_playing` already excludes expired tracks).
-
-    Doesn't look at the user's now_playing_mode: core's now_playing table is populated
-    for every user regardless of federation settings, so a caller must gate this itself
-    (build_document does) rather than leak listening activity for users who never turned
-    now playing on at all.
-    """
+def now_playing_text(user) -> str | None:
+    """ "Track by Artist", or None if nothing unexpired is playing (`get_now_playing`
+    already excludes expired tracks). Doesn't look at now_playing_mode: core's
+    now_playing table is populated for every user regardless of federation settings, so
+    a caller must gate this itself (now_playing_field does) rather than leak listening
+    activity for users who never turned now playing on at all."""
     playing = get_now_playing(user)
     if playing is None:
+        return None
+    return f"{playing.track} by {playing.artist}"
+
+
+def now_playing_field(user, settings) -> list[tuple[str, str]]:
+    """The actor's now-playing `PropertyValue` field: empty unless now_playing_mode is
+    on and something's actually playing."""
+    if settings.now_playing_mode == "off":
         return []
-    return [(NOW_PLAYING_FIELD, f"{playing.track} by {playing.artist}")]
+    text = now_playing_text(user)
+    return [(NOW_PLAYING_FIELD, text)] if text else []
 
 
 def build_document(urls: vocab.ActorUrls, user, settings) -> dict:
-    fields = now_playing_field(user) if settings.now_playing_mode != "off" else []
     return vocab.person(
         urls,
         username=user.username,
@@ -40,5 +45,5 @@ def build_document(urls: vocab.ActorUrls, user, settings) -> dict:
         discoverable=settings.discoverable,
         indexable=settings.indexable,
         published=settings.created_at.isoformat().replace("+00:00", "Z"),
-        fields=fields,
+        fields=now_playing_field(user, settings),
     )

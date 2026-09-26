@@ -10,13 +10,23 @@ URLS = vocab.actor_urls(
 )
 
 
-def test_now_playing_field_is_empty_when_nothing_is_playing(fed_ctx, user):
-    assert actors.now_playing_field(user) == []
+def test_now_playing_text_is_none_when_nothing_is_playing(fed_ctx, user):
+    assert actors.now_playing_text(user) is None
 
 
-def test_now_playing_field_shows_the_current_track(fed_ctx, user):
+def test_now_playing_text_shows_the_current_track(fed_ctx, user):
     update_now_playing(user, TrackInput(artist="Radiohead", track="Reckoner"))
-    assert actors.now_playing_field(user) == [("Now playing", "Reckoner by Radiohead")]
+    assert actors.now_playing_text(user) == "Reckoner by Radiohead"
+
+
+def test_now_playing_field_respects_the_mode(fed_ctx, user):
+    update_now_playing(user, TrackInput(artist="Radiohead", track="Reckoner"))
+    off = sharing.settings_for(user.id)
+    assert actors.now_playing_field(user, off) == []
+
+    sharing.update(user.id, {"enabled": True, "now_playing_mode": "profile"})
+    on = sharing.settings_for(user.id)
+    assert actors.now_playing_field(user, on) == [("Now playing", "Reckoner by Radiohead")]
 
 
 def test_build_document_includes_the_now_playing_field(fed_ctx, user):

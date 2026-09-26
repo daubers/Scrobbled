@@ -5,6 +5,7 @@ import { signedInPage } from "./layout.js";
 const form = document.getElementById("sharing");
 const messages = document.getElementById("messages");
 const handlePanel = document.getElementById("handle-panel");
+const RADIO_GROUPS = ["visibility", "now_playing_mode"];
 const FIELDS = [
   "enabled",
   "visibility",
@@ -14,6 +15,7 @@ const FIELDS = [
   "post_weekly_summary",
   "post_milestones",
   "timezone",
+  "now_playing_mode",
   "display_name",
   "bio",
 ];
@@ -70,10 +72,12 @@ async function previewWeekly() {
 
 function fill(values) {
   for (const name of FIELDS) {
+    if (RADIO_GROUPS.includes(name)) {
+      form.querySelector(`input[name=${name}][value="${values[name]}"]`).checked = true;
+      continue;
+    }
     const field = form.elements[name];
-    if (name === "visibility") {
-      form.querySelector(`input[name=visibility][value="${values.visibility}"]`).checked = true;
-    } else if (field.type === "checkbox") {
+    if (field.type === "checkbox") {
       field.checked = Boolean(values[name]);
     } else {
       field.value = values[name] ?? "";
@@ -150,6 +154,7 @@ async function save(event) {
     post_weekly_summary: form.elements.post_weekly_summary.checked,
     post_milestones: form.elements.post_milestones.checked,
     timezone: form.elements.timezone.value.trim() || "UTC",
+    now_playing_mode: form.querySelector("input[name=now_playing_mode]:checked").value,
     display_name: form.elements.display_name.value.trim() || null,
     bio: form.elements.bio.value.trim() || null,
   };
