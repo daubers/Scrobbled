@@ -20,6 +20,8 @@ def settings_for(user_id: int) -> FederationSettings:
     """The user's settings; unsaved defaults if they've never changed them."""
     settings = db.session.get(FederationSettings, user_id)
     if settings is None:
+        # Not added to the session: the model's column defaults apply on INSERT, not
+        # here, so every field a caller might read has to be set explicitly.
         settings = FederationSettings(
             user_id=user_id,
             enabled=False,
@@ -27,6 +29,9 @@ def settings_for(user_id: int) -> FederationSettings:
             manually_approves_followers=False,
             discoverable=False,
             indexable=False,
+            timezone="UTC",
+            post_weekly_summary=True,
+            post_milestones=True,
         )
     return settings
 

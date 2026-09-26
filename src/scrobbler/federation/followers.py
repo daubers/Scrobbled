@@ -139,3 +139,12 @@ def counts(user_id: int) -> dict[str, int]:
     ).all()
     found = dict(rows)
     return {"accepted": found.get("accepted", 0), "pending": found.get("pending", 0)}
+
+
+def accepted_inboxes(user_id: int) -> list[str]:
+    """Delivery inbox (their shared one, or their own) of every accepted follower, for
+    fanning out a post. Pending followers are excluded: they haven't been let in yet."""
+    accepted = db.session.scalars(
+        db.select(FederationFollower).filter_by(user_id=user_id, state="accepted")
+    ).all()
+    return [follower.actor.delivery_inbox for follower in accepted]

@@ -5,7 +5,7 @@ from flask_smorest import Blueprint, abort
 
 from scrobbler.api.decorators import authenticated
 from scrobbler.extensions import db
-from scrobbler.federation import activities, sharing
+from scrobbler.federation import activities, publishing, sharing
 from scrobbler.federation import followers as follower_state
 from scrobbler.federation import metrics as fed_metrics
 from scrobbler.federation.models import FederationBlock, FederationFollower
@@ -69,7 +69,7 @@ def update_settings(changes):
 
     Turning sharing on makes you findable as your handle. Your handle can't change once
     people follow you. Visibility changes apply to new posts only. Turning sharing off
-    removes all your followers (each is told).
+    deletes your posts and removes all your followers (each is told).
     """
     try:
         settings, toggled = sharing.update(g.user.id, changes)
@@ -78,7 +78,9 @@ def update_settings(changes):
     if toggled is not None:
         fed_metrics.sharing_changes_total.labels(change="enabled" if toggled else "disabled").inc()
     if toggled is False:
-        # Tell every follower (a Reject each), then forget them
+        # Delete every live post first: reject_all removes the followers that
+        # accepted_inboxes() needs to know where to send the Deletes.
+        publishing.delete_all_for(g.user.id, g.user.username)
         follower_state.reject_all(g.user.id, g.user.username)
         db.session.commit()
     return _settings_body(g.user, settings)

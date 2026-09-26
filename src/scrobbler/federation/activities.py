@@ -13,8 +13,11 @@ from scrobbler.federation.models import (
 from scrobbler.federation.protocol import vocab
 
 
-def _store(user_id: int, document_for, public: bool = False) -> FederationActivity:
-    """Create an activity. `document_for(activity_url)` builds its JSON."""
+def store(user_id: int, document_for, public: bool = False) -> FederationActivity:
+    """Create an activity. `document_for(activity_url)` builds its JSON.
+
+    Public: used both for our own narrow activity types below (Accept, Reject, Block,
+    Undo) and, from publishing/base.py, for Create/Delete of posts."""
     activity_uuid = str(uuid.uuid4())
     document = document_for(ids.activity_url(activity_uuid))
     activity = FederationActivity(
@@ -38,7 +41,7 @@ def queue(activity: FederationActivity, inboxes: list[str]) -> list[FederationDe
 
 
 def accept_follow(username: str, follower: FederationFollower) -> FederationActivity:
-    activity = _store(
+    activity = store(
         follower.user_id,
         lambda url: vocab.accept(url, ids.actor_id(username), follower.follow_activity),
     )
@@ -47,7 +50,7 @@ def accept_follow(username: str, follower: FederationFollower) -> FederationActi
 
 
 def reject_follow(username: str, follower: FederationFollower) -> FederationActivity:
-    activity = _store(
+    activity = store(
         follower.user_id,
         lambda url: vocab.reject(url, ids.actor_id(username), follower.follow_activity),
     )
@@ -59,13 +62,13 @@ def reject_follow_activity(
     user_id: int, username: str, follow: dict, actor: FederationRemoteActor
 ) -> FederationActivity:
     """Reject a Follow that never became a follower (e.g. from a blocked account)."""
-    activity = _store(user_id, lambda url: vocab.reject(url, ids.actor_id(username), follow))
+    activity = store(user_id, lambda url: vocab.reject(url, ids.actor_id(username), follow))
     queue(activity, [actor.inbox])
     return activity
 
 
 def block(user_id: int, username: str, actor: FederationRemoteActor) -> FederationActivity:
-    activity = _store(user_id, lambda url: vocab.block(url, ids.actor_id(username), actor.uri))
+    activity = store(user_id, lambda url: vocab.block(url, ids.actor_id(username), actor.uri))
     queue(activity, [actor.inbox])
     return activity
 
@@ -82,7 +85,7 @@ def undo_block(
     ).first()
     if block_activity is None:
         return None
-    activity = _store(
+    activity = store(
         user_id, lambda url: vocab.undo(url, ids.actor_id(username), block_activity.document)
     )
     queue(activity, [actor.inbox])

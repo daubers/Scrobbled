@@ -1942,7 +1942,7 @@
           }
         },
         "summary": "Change your sharing settings",
-        "description": "Turning sharing on makes you findable as your handle. Your handle can't change once\npeople follow you. Visibility changes apply to new posts only. Turning sharing off\nremoves all your followers (each is told).",
+        "description": "Turning sharing on makes you findable as your handle. Your handle can't change once\npeople follow you. Visibility changes apply to new posts only. Turning sharing off\ndeletes your posts and removes all your followers (each is told).",
         "tags": [
           "Federation"
         ],

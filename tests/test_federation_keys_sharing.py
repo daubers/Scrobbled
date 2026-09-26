@@ -15,6 +15,17 @@ def test_defaults_are_private(fed_ctx, user):
     assert sharing.shared_user("alice") is None
 
 
+def test_unsaved_defaults_have_every_field_populated(fed_ctx, user):
+    """settings_for() builds a transient object when a user has never saved settings; its
+    column defaults apply only on INSERT, so every field has to be set by hand."""
+    settings = sharing.settings_for(user.id)
+    assert (settings.timezone, settings.post_weekly_summary, settings.post_milestones) == (
+        "UTC",
+        True,
+        True,
+    )
+
+
 def test_enabling_creates_a_key_pair_that_signs(fed_ctx, user):
     _, toggled = sharing.update(user.id, {"enabled": True})
     assert toggled is True

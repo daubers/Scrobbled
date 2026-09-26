@@ -11,6 +11,10 @@ def actor_id(username: str) -> str:
     return f"{base_url()}/users/{username}"
 
 
+def followers_url(username: str) -> str:
+    return f"{actor_id(username)}/followers"
+
+
 def key_id(username: str) -> str:
     return f"{actor_id(username)}#main-key"
 
@@ -25,6 +29,16 @@ def instance_key_id() -> str:
 
 def activity_url(activity_uuid: str) -> str:
     return f"{base_url()}/activities/{activity_uuid}"
+
+
+def note_url(username: str, post_uuid: str) -> str:
+    """The Note's ActivityPub id (served at /users/<u>/posts/<uuid>)."""
+    return f"{actor_id(username)}/posts/{post_uuid}"
+
+
+def post_page_url(username: str, post_uuid: str) -> str:
+    """Where a browser following the Note's `url` lands, in the web UI."""
+    return f"{current_app.config['UI_BASE_URL']}/post.html?id={post_uuid}"
 
 
 def username_from_actor_id(uri: str | None) -> str | None:
