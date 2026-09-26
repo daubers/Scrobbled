@@ -254,9 +254,10 @@ class FederationPendingCheck(db.Model):
 
 class FederationNowPlaying(db.Model):
     """What we've last told the fediverse is playing, as opposed to `now_playing` in the
-    core schema, which is what's actually playing. A "key" is `artist\\x1ftrack\\x1f
-    started_at`: playing the same track again later is a new now-playing moment, not a
-    stale repeat, and it doubles as federation_posts.key for the posts side."""
+    core schema, which is what's actually playing. A "key" is a short hash of `artist,
+    track, started_at` (see publishing/now_playing.py): playing the same track again
+    later is a new now-playing moment, not a stale repeat, and it doubles as
+    federation_posts.key for the posts side."""
 
     __tablename__ = "federation_now_playing"
 

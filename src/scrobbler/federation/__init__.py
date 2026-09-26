@@ -40,7 +40,7 @@ def init_app(app: Flask) -> None:
 
     from scrobbler import events, worker
     from scrobbler.federation import delivery, inbox
-    from scrobbler.federation.publishing import milestones, weekly
+    from scrobbler.federation.publishing import milestones, now_playing, weekly
 
     worker.register_task(app, "federation.inbox", inbox.work_once)
     worker.register_task(app, "federation.deliver", delivery.work_once)
@@ -48,6 +48,7 @@ def init_app(app: Flask) -> None:
     worker.register_periodic(app, "federation.inbox.maintenance", 300, inbox.maintenance)
     worker.register_periodic(app, "federation.gauges", 30, delivery.maintenance)
     worker.register_periodic(app, "federation.weekly", 900, weekly.check_all)
+    worker.register_periodic(app, "federation.now_playing", 30, now_playing.check_all)
 
     # blinker signals are process-wide, not per-app: once any app in a process enables
     # federation these stay connected for every app in it, including one built with

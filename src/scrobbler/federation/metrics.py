@@ -53,7 +53,7 @@ followers = Gauge(
 )
 posts_total = Counter(
     "scrobbler_federation_posts_total",
-    "Posts published: weekly summaries and milestones",
+    "Posts published: weekly summaries, milestones and now-playing",
     ["kind", "visibility"],
 )
 post_deletions_total = Counter(
@@ -69,5 +69,11 @@ milestone_checks_total = Counter(
 weekly_total = Counter(
     "scrobbler_federation_weekly_total",
     "Weekly summary checks, by result: disabled, skipped_empty, already_posted or posted",
+    ["result"],
+)
+profile_updates_total = Counter(
+    "scrobbler_federation_profile_updates_total",
+    "Now-playing Update(Person) pushes: sent, or throttled (still within the 5-minute "
+    "window since the last one)",
     ["result"],
 )
