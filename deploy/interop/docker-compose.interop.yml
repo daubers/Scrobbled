@@ -1,0 +1,84 @@
+# Federation interop test: Scrobbler and a real GoToSocial server on one private network.
+#
+#   docker compose -f docker-compose.yml -f deploy/interop/docker-compose.interop.yml up -d --build
+#   ...create the GoToSocial user (see scripts/interop/run.sh), then run the driver.
+#
+# TEST ONLY: GoToSocial runs over plain HTTP and skips TLS verification; Scrobbler is
+# served over HTTPS by a Caddy proxy with a throwaway certificate, and its "insecure
+# testing" switch lets it reach GoToSocial over HTTP on this private network. All on the
+# reserved .test domain. Never use these settings anywhere else.
+name: scrobbler-interop
+
+x-federation: &federation
+  DATABASE_URL: postgresql+psycopg://scrobbler:scrobbler@db:5432/scrobbler
+  FEDERATION_ENABLED: "1"
+  FEDERATION_DOMAIN: scrobble.test
+  FEDERATION_BASE_URL: https://scrobble.test
+  FEDERATION_KEY_SECRET: interop-test-only-secret-0123456789abcdef
+  FEDERATION_INSECURE_TESTING: "1"
+  UI_BASE_URL: https://scrobble.test
+
+networks:
+  fedi:
+    ipam:
+      config:
+        - subnet: ${INTEROP_SUBNET:-172.30.0.0/24}
+
+services:
+  db:
+    ports: !reset []
+    volumes: !reset [db-data:/var/lib/postgresql/data]  # no bind mounts (CI)
+    networks: [fedi]
+
+  api:
+    environment: *federation
+    ports: !reset []
+    networks: [fedi]
+
+  worker:
+    environment: *federation
+    networks: [fedi]
+
+  ui:
+    environment:
+      API_BASE_URL: https://scrobble.test
+      API_INTERNAL_URL: http://api:8000
+    ports: !reset []
+    networks: [fedi]
+
+  # GoToSocial looks up remote servers over HTTPS: serve scrobble.test with TLS
+  # (Caddy's internal CA) in front of the UI, which forwards fediverse paths to the API.
+  tls:
+    image: caddy:2.10
+    command: ["caddy", "reverse-proxy", "--from", "https://scrobble.test", "--to", "http://ui:80", "--internal-certs"]
+    networks:
+      fedi:
+        aliases: [scrobble.test]
+
+  gotosocial:
+    image: superseriousbusiness/gotosocial:0.22.1
+    environment:
+      GTS_HOST: gts.test
+      GTS_PROTOCOL: http  # local testing only
+      GTS_PORT: "80"
+      GTS_DB_TYPE: sqlite
+      GTS_DB_ADDRESS: /gotosocial/storage/sqlite.db
+      GTS_HTTP_CLIENT_ALLOW_IPS: ${INTEROP_SUBNET:-172.30.0.0/24}  # let it reach Scrobbler on this network
+      GTS_HTTP_CLIENT_TLS_INSECURE_SKIP_VERIFY: "true"  # Caddy's throwaway certificate
+      GTS_TRUSTED_PROXIES: ${INTEROP_SUBNET:-172.30.0.0/24}
+      GTS_ACCOUNTS_REGISTRATION_OPEN: "false"
+      GTS_LOG_LEVEL: ${GTS_LOG_LEVEL:-info}
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: 0  # listen on :80 as its non-root user
+    networks:
+      fedi:
+        aliases: [gts.test]
+
+  driver:
+    build:
+      context: .
+      dockerfile: deploy/interop/driver.Dockerfile
+    profiles: [driver]
+    environment:
+      GTS_REJECT_ENDS_FOLLOWS: ${GTS_REJECT_ENDS_FOLLOWS:-0}
+    networks: [fedi]

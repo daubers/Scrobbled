@@ -13,7 +13,7 @@ def app():
     app = create_app(TestConfig)
     with app.app_context():
         downgrade(revision="base")  # clean slate if a previous run was interrupted
-        upgrade()
+        upgrade(revision="heads")  # core and federation branches
         yield app
         db.session.remove()
         downgrade(revision="base")
@@ -142,3 +142,134 @@ def ui_token(user):
 def auth(ui_token):
     """Authorization headers for the default user."""
     return {"Authorization": f"Bearer {ui_token}"}
+
+
+# --- Federation ---------------------------------------------------------------------
+
+from scrobbler.config import TestConfig as _TestConfig  # noqa: E402
+
+
+class FederatedTestConfig(_TestConfig):
+    FEDERATION_ENABLED = "1"
+    FEDERATION_DOMAIN = "scrobble.test"
+    FEDERATION_BASE_URL = "https://scrobble.test"
+    FEDERATION_KEY_SECRET = "test-only-federation-key-secret-0123456789"
+    # Lets tests federate with servers on 127.0.0.1 over http (allowed for .test only).
+    FEDERATION_INSECURE_TESTING = "1"
+
+
+@pytest.fixture(scope="session")
+def fed_app(app):
+    """A second app, with federation on, sharing the test database."""
+    return create_app(FederatedTestConfig)
+
+
+@pytest.fixture
+def fed_client(fed_app):
+    return fed_app.test_client()
+
+
+@pytest.fixture
+def fed_ctx(fed_app):
+    """Run the test inside the federation app's context (for services using current_app)."""
+    with fed_app.app_context():
+        yield
+        db.session.remove()
+
+
+@pytest.fixture
+def sharing_user(fed_ctx, user):
+    """The default user, with sharing switched on."""
+    from scrobbler.federation import sharing
+
+    sharing.update(user.id, {"enabled": True, "display_name": "Alice", "bio": "Listening."})
+    return user
+
+
+class FakeRemote:
+    """A tiny HTTP server standing in for another fediverse server.
+
+    `routes[path] = (status, headers, body)` or a function(request) returning that;
+    `requests` records what it received.
+    """
+
+    def __init__(self):
+        import threading
+
+        from werkzeug.serving import make_server
+        from werkzeug.wrappers import Request, Response
+
+        self.routes: dict = {}
+        self.requests: list = []
+
+        @Request.application
+        def app(request):
+            self.requests.append(
+                {
+                    "method": request.method,
+                    "path": request.full_path.rstrip("?"),
+                    "headers": dict(request.headers),
+                    "body": request.get_data(),
+                }
+            )
+            route = self.routes.get(request.path, (404, {}, b"not found"))
+            # A route is (status, headers, body), or a function of the request returning one
+            status, headers, body = route(request) if callable(route) else route
+            if isinstance(body, dict | list):
+                import json as _json
+
+                body, headers = (
+                    _json.dumps(body).encode(),
+                    {"Content-Type": "application/activity+json", **headers},
+                )
+            return Response(body, status=status, headers=headers)
+
+        self.server = make_server("127.0.0.1", 0, app, threaded=True)
+        self.base = f"http://127.0.0.1:{self.server.server_port}"
+        # A short poll interval: shutdown() waits for the next poll
+        threading.Thread(
+            target=self.server.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True
+        ).start()
+
+    def url(self, path: str) -> str:
+        return self.base + path
+
+    def close(self):
+        self.server.shutdown()
+
+
+@pytest.fixture
+def remote():
+    server = FakeRemote()
+    yield server
+    server.close()
+
+
+# --- Fast RSA keys --------------------------------------------------------------------------
+# Generating 2048-bit keys dominates federation test time. Tests only need distinct valid
+# keys, so hand out a pool generated once per run (cycling; 16 is plenty per test).
+
+_KEY_POOL: list = []
+
+
+def _pooled_rsa_key(public_exponent=65537, key_size=2048, backend=None):
+
+    if len(_KEY_POOL) < 16:
+        _KEY_POOL.append(_ORIGINAL_GENERATE(public_exponent=public_exponent, key_size=key_size))
+        return _KEY_POOL[-1]
+    _KEY_POOL.append(_KEY_POOL.pop(0))
+    return _KEY_POOL[-1]
+
+
+from cryptography.hazmat.primitives.asymmetric import rsa as _rsa_module  # noqa: E402
+
+_ORIGINAL_GENERATE = _rsa_module.generate_private_key
+
+
+@pytest.fixture(autouse=True)
+def _fast_rsa_keys(monkeypatch):
+    import federation_helpers
+    from scrobbler.federation import keys as federation_keys
+
+    monkeypatch.setattr(federation_keys.rsa, "generate_private_key", _pooled_rsa_key)
+    monkeypatch.setattr(federation_helpers.rsa, "generate_private_key", _pooled_rsa_key)

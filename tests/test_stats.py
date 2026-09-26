@@ -171,3 +171,85 @@ def test_me_summary(client, auth, history):
 def test_me_requires_auth(client):
     for path in ("recent", "top/artists", "counts", "summary", "now-playing"):
         assert client.get(f"/api/v1/me/{path}").status_code == 401
+
+
+# --- Explicit windows (start inclusive, end exclusive) --------------------------------
+# Used by federation's weekly summaries (phase 3): a fixed window, not "N days back".
+
+WINDOW_START = datetime(2026, 1, 5, tzinfo=UTC)  # a Monday
+WINDOW_END = datetime(2026, 1, 12, tzinfo=UTC)  # the following Monday
+
+
+def played(user, artist, track, when):
+    db.session.add(Scrobble(user_id=user.id, artist=artist, track=track, played_at=when))
+
+
+@pytest.fixture
+def windowed_history(user):
+    # Inside the window
+    played(user, "Radiohead", "Reckoner", WINDOW_START + timedelta(days=1))
+    played(user, "Radiohead", "Nude", WINDOW_START + timedelta(days=2))
+    played(user, "Björk", "Jóga", WINDOW_START + timedelta(days=3))
+    # Exactly at the start boundary: included (inclusive)
+    played(user, "Radiohead", "Nude", WINDOW_START)
+    # Exactly at the end boundary: excluded (exclusive)
+    played(user, "Portishead", "Roads", WINDOW_END)
+    # Well outside the window on both sides
+    played(user, "Old Artist", "Old Track", WINDOW_START - timedelta(days=10))
+    played(user, "Future Artist", "Future Track", WINDOW_END + timedelta(days=10))
+    db.session.commit()
+
+
+def test_scrobble_count_between(user, windowed_history):
+    from scrobbler.services import stats
+
+    assert stats.scrobble_count_between(user, WINDOW_START, WINDOW_END) == 4
+
+
+def test_top_artists_between(user, windowed_history):
+    from scrobbler.services import stats
+
+    items = stats.top_artists_between(user, WINDOW_START, WINDOW_END)
+    assert [(i.rank, i.name, i.playcount) for i in items] == [(1, "Radiohead", 3), (2, "Björk", 1)]
+
+
+def test_top_tracks_between(user, windowed_history):
+    from scrobbler.services import stats
+
+    items = stats.top_tracks_between(user, WINDOW_START, WINDOW_END)
+    assert items[0].name == "Nude"
+    assert items[0].artist == "Radiohead"
+    assert items[0].playcount == 2
+
+
+def test_between_window_has_no_plays_outside_it(user):
+    from scrobbler.services import stats
+
+    empty_start = WINDOW_END + timedelta(days=100)
+    empty_end = empty_start + timedelta(days=7)
+    assert stats.scrobble_count_between(user, empty_start, empty_end) == 0
+    assert stats.top_artists_between(user, empty_start, empty_end) == []
+    assert stats.top_tracks_between(user, empty_start, empty_end) == []
+
+
+def test_between_is_scoped_to_the_user(user, make_user, windowed_history):
+    from scrobbler.services import stats
+
+    other = make_user(username="mallory")
+    add(other, "Someone Else", "Track", days_ago=(NOW - WINDOW_START).total_seconds() / 86400 - 1)
+    db.session.commit()
+    assert stats.scrobble_count_between(user, WINDOW_START, WINDOW_END) == 4
+    assert stats.scrobble_count_between(other, WINDOW_START, WINDOW_END) == 1
+
+
+def test_rolling_periods_are_unaffected_by_the_window_refactor(client, api_app, history):
+    """_user_scrobbles(user, period) now delegates to _between(); this pins its old
+    behaviour (unbounded end, inclusive start) so the refactor can't silently change it."""
+    response = client.get(
+        f"/2.0/?method=user.getTopArtists&user=alice&period=7day&api_key={api_app.api_key}"
+    )
+    top = ET.fromstring(response.data).find("topartists")
+    assert [(a.find("name").text, a.find("playcount").text) for a in top] == [
+        ("Radiohead", "3"),
+        ("Björk", "2"),
+    ]

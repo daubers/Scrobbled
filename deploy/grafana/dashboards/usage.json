@@ -572,7 +572,7 @@
     },
     {
       "type": "row",
-      "title": "Imports",
+      "title": "Background work",
       "id": 13,
       "collapsed": false,
       "gridPos": {
@@ -880,6 +880,67 @@
     },
     {
       "type": "timeseries",
+      "title": "Worker tasks",
+      "description": "Runs of each background task that did work, and failures. A task that keeps failing is logged by the worker.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (task) (increase(scrobbler_worker_tasks_total{outcome=\"worked\"}[$__rate_interval]))",
+          "legendFormat": "{{task}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (task) (increase(scrobbler_worker_tasks_total{outcome=\"error\"}[$__rate_interval]))",
+          "legendFormat": "{{task}} errors",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 70,
+            "showPoints": "never",
+            "spanNulls": true,
+            "drawStyle": "bars"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 19,
+      "gridPos": {
+        "x": 12,
+        "y": 38,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
       "title": "Import duration (p95)",
       "description": "",
       "datasource": {
@@ -921,10 +982,10 @@
           "sort": "desc"
         }
       },
-      "id": 19,
+      "id": 20,
       "gridPos": {
-        "x": 12,
-        "y": 38,
+        "x": 0,
+        "y": 46,
         "w": 12,
         "h": 8
       }

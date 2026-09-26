@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 from scrobbler.extensions import db
 from scrobbler.models import UiToken
+from scrobbler.services import accounts
 
 
 def register(client, username="bob", password="correct horse", email=None):
@@ -98,3 +99,8 @@ def test_cors_allows_only_the_configured_ui_origin(client, app):
         "/api/v1/auth/me", headers={"Origin": "https://evil.example", **preflight}
     )
     assert "Access-Control-Allow-Origin" not in evil.headers
+
+
+def test_get_user_by_id(app, user):
+    assert accounts.get_user(user.id).username == user.username
+    assert accounts.get_user(user.id + 999) is None

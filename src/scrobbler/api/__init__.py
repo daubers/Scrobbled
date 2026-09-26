@@ -29,11 +29,16 @@ class ScrobblerApi(Api):
         return response
 
 
-api = ScrobblerApi()
+def get_api(app: Flask) -> ScrobblerApi:
+    """This app's Api (for registering blueprints and documenting paths)."""
+    return app.extensions["scrobbler_api"]
 
 
 def init_app(app: Flask) -> None:
-    api.init_app(app)
+    # One Api per app: its OpenAPI spec is per app too, so apps with different
+    # optional modules enabled (e.g. in tests) never share a spec.
+    api = ScrobblerApi(app)
+    app.extensions["scrobbler_api"] = api
     api.spec.components.security_scheme(
         "bearerAuth",
         {

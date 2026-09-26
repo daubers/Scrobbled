@@ -8,7 +8,7 @@ from flask import current_app
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 
-from scrobbler import metrics
+from scrobbler import events, metrics
 from scrobbler.extensions import db
 from scrobbler.models import ApiApp, NowPlaying, Scrobble, User
 
@@ -147,8 +147,14 @@ def submit_scrobbles(user: User, api_app: ApiApp | None, items: list[TrackInput]
         if inserted:
             metrics.scrobble_lag_seconds.observe(max(0.0, (now - played_at).total_seconds()))
 
-    _clear_now_playing(user, [r.item for r in results if r.status != "ignored"])
+    cleared = _clear_now_playing(user, [r.item for r in results if r.status != "ignored"])
     db.session.commit()
+
+    stored = [r.item for r in results if r.status == "accepted"]
+    if stored:
+        events.send(events.scrobbles_stored, user, scrobbles=stored, source="scrobble")
+    if cleared:
+        events.send(events.now_playing_changed, user, track=None)
 
     metrics.scrobble_batch_size.observe(len(items))
     for result in results:
@@ -158,17 +164,19 @@ def submit_scrobbles(user: User, api_app: ApiApp | None, items: list[TrackInput]
     return results
 
 
-def _clear_now_playing(user: User, scrobbled: list[TrackInput]) -> None:
+def _clear_now_playing(user: User, scrobbled: list[TrackInput]) -> bool:
+    """Remove now-playing if one of the scrobbled tracks is it. Returns True if removed."""
     now_playing = db.session.get(NowPlaying, user.id)
     if now_playing is None:
-        return
+        return False
     for item in scrobbled:
         if (item.artist.lower(), item.track.lower()) == (
             now_playing.artist.lower(),
             now_playing.track.lower(),
         ):
             db.session.delete(now_playing)
-            return
+            return True
+    return False
 
 
 # --- Now playing ---------------------------------------------------------------
@@ -198,6 +206,7 @@ def update_now_playing(user: User, item: TrackInput) -> int:
     )
     db.session.commit()
     metrics.now_playing_updates_total.inc()
+    events.send(events.now_playing_changed, user, track=item)
     return NOT_IGNORED
 
 

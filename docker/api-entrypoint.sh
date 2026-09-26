@@ -3,6 +3,6 @@
 set -e
 if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
   # Not under gunicorn, so don't use (or pollute) the multiprocess metrics directory.
-  env -u PROMETHEUS_MULTIPROC_DIR flask --app scrobbler db upgrade
+  env -u PROMETHEUS_MULTIPROC_DIR flask --app scrobbler db upgrade heads
 fi
 exec "$@"

@@ -844,3 +844,136 @@ input {
     transition: width 0.4s ease-out;
   }
 }
+
+/* ---- Sharing & profile ---------------------------------------------------- */
+.sharing {
+  max-width: 44rem;
+}
+
+.share-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: var(--step-1);
+  font-weight: 650;
+  margin-bottom: 1rem;
+}
+
+.share-switch input {
+  width: 1.4rem;
+  height: 1.4rem;
+  accent-color: var(--ok);
+}
+
+.handle-panel {
+  margin-bottom: 2rem;
+}
+
+.handle {
+  font-size: clamp(1.1rem, 4vw, var(--step-2));
+  margin: 0.4rem 0 0.75rem;
+}
+
+.handle-panel .notice {
+  margin-top: 1rem;
+}
+
+.choices {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 0 0 1.5rem;
+  padding: 1.25rem 0 0;
+  min-inline-size: 0;
+}
+
+.choices legend {
+  font-weight: 650;
+  font-size: var(--step-1);
+  padding: 0 0.5rem 0 0;
+}
+
+.choice {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 0.9rem;
+}
+
+.choice input {
+  margin-top: 0.3rem;
+  accent-color: var(--ink);
+}
+
+.choice label {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.choice label .muted {
+  font-size: var(--step--1);
+}
+
+.choices .hint {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+  margin-top: 0.5rem;
+}
+
+.preview-box {
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-control);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  margin: 0.75rem 0 1.25rem;
+}
+
+.preview-box p {
+  margin: 0 0 0.5rem;
+}
+
+.preview-box p:last-child {
+  margin-bottom: 0;
+}
+
+.field textarea {
+  min-height: 5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  background: var(--paper-raised);
+  font: inherit;
+  color: inherit;
+  resize: vertical;
+}
+
+.field textarea:focus-visible {
+  border-color: var(--focus);
+}
+
+.profile-bio {
+  white-space: pre-line;
+}
+
+.now-playing {
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-control);
+  border-left: 4px solid var(--glow);
+  background: var(--paper-raised);
+  margin: 0.75rem 0;
+}
+
+.profile-follow {
+  margin: 2rem 0 0.4rem;
+}
+
+.save-row {
+  align-items: center;
+}
+
+.follower-summary {
+  margin-top: 0.25rem;
+}
+
+.confirm-off .button-row {
+  margin-top: 0.75rem;
+}

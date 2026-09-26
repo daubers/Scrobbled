@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Followers · Scrobbler</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%231c2330'/%3E%3Ccircle cx='8' cy='8' r='3.5' fill='%23f2a541'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="config.js"></script>
+    <script type="module" src="js/followers.js"></script>
+  </head>
+  <body>
+    <header class="site-header" id="site-header"></header>
+    <main id="main">
+    <h1 class="page-title">Followers</h1>
+    <p class="lede">People on the fediverse who follow your listening. <a href="sharing.html">Sharing settings</a></p>
+    <div id="messages"></div>
+    <section aria-labelledby="requests-title" id="requests-section" hidden>
+      <h2 id="requests-title" class="section-head">Follow requests</h2>
+      <ul class="rows" id="requests"></ul>
+    </section>
+    <section aria-labelledby="followers-title">
+      <h2 id="followers-title" class="section-head">Followers</h2>
+      <ul class="rows" id="followers"></ul>
+    </section>
+    <section aria-labelledby="blocks-title" id="blocks-section" hidden>
+      <h2 id="blocks-title" class="section-head">Blocked</h2>
+      <ul class="rows" id="blocks"></ul>
+    </section>
+    </main>
+  </body>
+</html>

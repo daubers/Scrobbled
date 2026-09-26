@@ -30,6 +30,10 @@ def create_app(config_object=None):
 
     app.register_blueprint(lastfm_bp)
     api.init_app(app)
+
+    from scrobbler import federation  # the only place the core touches federation
+
+    federation.init_app(app)
     CORS(
         app,
         resources={r"/api/v1/*": {"origins": app.config["CORS_ORIGINS"]}},
@@ -37,9 +41,12 @@ def create_app(config_object=None):
         max_age=600,
     )
 
-    from scrobbler.cli import imports_cli
+    from scrobbler.cli import imports_cli, worker_command
+    from scrobbler.services import imports as import_service
 
+    app.cli.add_command(worker_command)
     app.cli.add_command(imports_cli)
+    import_service.register_worker_tasks(app)
 
     from scrobbler.metrics import db as db_metrics
 

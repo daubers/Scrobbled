@@ -29,7 +29,7 @@ from flask import current_app
 from sqlalchemy import update
 from sqlalchemy.dialects.postgresql import insert
 
-from scrobbler import metrics
+from scrobbler import events, metrics
 from scrobbler.extensions import db
 from scrobbler.models import ImportJob, Scrobble, User
 from scrobbler.services.scrobbles import MAX_TEXT, TrackInput
@@ -314,6 +314,7 @@ def cancel_job(user: User, job_id: int) -> ImportJob | None:
         job.payload = None
         db.session.commit()
         metrics.imports_total.labels(source=job.source, status="cancelled").inc()
+        events.send(events.import_finished, user, job=job)
     return job
 
 
@@ -328,10 +329,13 @@ def _usable(item: TrackInput | None, now: datetime) -> bool:
     return datetime.fromtimestamp(item.timestamp, UTC) - now <= timedelta(seconds=limit)
 
 
-def store_chunk(job: ImportJob, items: list[TrackInput | None]) -> None:
-    """Insert one chunk and update the job's counters (the caller commits)."""
+def store_chunk(job: ImportJob, items: list[TrackInput | None]) -> list[TrackInput]:
+    """Insert one chunk and update the job's counters (the caller commits).
+
+    Returns the plays that were newly stored (not duplicates or skipped rows).
+    """
     now = _now()
-    rows, seen = [], set()
+    rows, seen = [], {}
     skipped = repeated = 0
     for item in items:
         if not _usable(item, now):
@@ -342,7 +346,7 @@ def store_chunk(job: ImportJob, items: list[TrackInput | None]) -> None:
         if key in seen:  # the same play twice in one chunk: ON CONFLICT can't handle that
             repeated += 1
             continue
-        seen.add(key)
+        seen[key] = item
         rows.append(
             {
                 "user_id": job.user_id,
@@ -355,16 +359,18 @@ def store_chunk(job: ImportJob, items: list[TrackInput | None]) -> None:
                 "submitted_at": now,
             }
         )
-    inserted = 0
+    stored: list[TrackInput] = []
     if rows:
-        inserted = len(
-            db.session.execute(
+        stored = [
+            seen[tuple(row)]
+            for row in db.session.execute(
                 insert(Scrobble)
                 .values(rows)
                 .on_conflict_do_nothing(constraint="uq_scrobbles_dedupe")
-                .returning(Scrobble.id)
-            ).all()
-        )
+                .returning(Scrobble.played_at, Scrobble.artist, Scrobble.track)
+            )
+        ]
+    inserted = len(stored)
     duplicates = len(rows) - inserted + repeated
     job.imported += inserted
     job.duplicates += duplicates
@@ -375,6 +381,15 @@ def store_chunk(job: ImportJob, items: list[TrackInput | None]) -> None:
     counter.labels(source=job.source, result="imported").inc(inserted)
     counter.labels(source=job.source, result="duplicate").inc(duplicates)
     counter.labels(source=job.source, result="skipped").inc(skipped)
+    return stored
+
+
+def _store_and_commit(job: ImportJob, items: list[TrackInput | None]) -> None:
+    stored = store_chunk(job, items)
+    db.session.commit()
+    if stored:
+        user = db.session.get(User, job.user_id)
+        events.send(events.scrobbles_stored, user, scrobbles=stored, source="import")
 
 
 def _cancelled(job: ImportJob) -> bool:
@@ -402,8 +417,7 @@ def _process_file(job: ImportJob) -> None:
     for chunk in _chunks(items):
         if _cancelled(job):
             return
-        store_chunk(job, chunk)
-        db.session.commit()
+        _store_and_commit(job, chunk)
 
 
 # --- Last.fm API pull ------------------------------------------------------------------
@@ -484,9 +498,8 @@ def _process_lastfm(job: ImportJob) -> None:
         total_pages = int(attrs.get("totalPages") or 0)
         job.total = int(attrs.get("total") or 0)
         tracks = list(_json_tracks(body))
-        store_chunk(job, [_track_from_json(t) for t in tracks])
         job.next_page = page + 1
-        db.session.commit()
+        _store_and_commit(job, [_track_from_json(t) for t in tracks])
         if page >= total_pages or not tracks:
             return
         page += 1
@@ -553,17 +566,22 @@ def _finish(job: ImportJob, status: str, error: str | None = None) -> None:
     job.payload = None
     db.session.commit()
     metrics.imports_total.labels(source=job.source, status=status).inc()
+    events.send(events.import_finished, db.session.get(User, job.user_id), job=job)
 
 
-def run_worker(poll_seconds: float = 2.0, once: bool = False) -> None:
-    requeue_stalled()
-    while True:
-        job = claim_next_job()
-        if job is not None:
-            log.info("import job %s (%s) for user %s started", job.id, job.source, job.user_id)
-            process_job(job)
-            log.info("import job %s finished: %s", job.id, job.status)
-            continue
-        if once:
-            return
-        time.sleep(poll_seconds)
+def work_once() -> bool:
+    """Worker task: process the oldest waiting import, if any."""
+    job = claim_next_job()
+    if job is None:
+        return False
+    log.info("import job %s (%s) for user %s started", job.id, job.source, job.user_id)
+    process_job(job)
+    log.info("import job %s finished", job.id)
+    return True
+
+
+def register_worker_tasks(app) -> None:
+    from scrobbler import worker
+
+    worker.register_task(app, "imports", work_once)
+    worker.register_periodic(app, "imports.requeue_stalled", 60, requeue_stalled)

@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from werkzeug.serving import make_server
 
+from scrobbler import worker
 from scrobbler.extensions import db
 from scrobbler.models import ImportJob, Scrobble
 from scrobbler.services import imports
@@ -29,7 +30,7 @@ def stored(user):
 
 
 def run_all():
-    imports.run_worker(once=True)
+    worker.run(once=True)
     db.session.expire_all()
 
 

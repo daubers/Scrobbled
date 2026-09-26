@@ -8,7 +8,17 @@ from openapi_spec_validator import validate
 from scrobbler.lastfm.registry import METHODS
 
 COMMITTED_SPEC = Path(__file__).resolve().parents[1] / "docs" / "openapi.json"
-DOCUMENTED_PREFIXES = ("/api/v1/", "/2.0/", "/api/auth/", "/healthz")
+DOCUMENTED_PREFIXES = (
+    "/api/v1/",
+    "/2.0/",
+    "/api/auth/",
+    "/healthz",
+    "/.well-known/",
+    "/nodeinfo/",
+    "/users/",
+    "/inbox",
+    "/actor",
+)
 HTTP_VERBS = {"get", "put", "post", "delete", "patch", "head", "options"}
 
 
@@ -25,7 +35,21 @@ def test_spec_is_valid_openapi(spec):
     validate(spec)
 
 
-def test_every_api_route_is_documented(app, spec):
+@pytest.fixture(scope="module")
+def fed_spec(fed_app):
+    return fed_app.test_client().get("/api/openapi.json").get_json()
+
+
+def test_every_api_route_is_documented(app, spec, fed_app, fed_spec):
+    _check_documented(app, spec)
+    _check_documented(fed_app, fed_spec)  # with federation's routes too
+
+
+def test_federation_off_documents_no_federation_paths(spec):
+    assert not [p for p in spec["paths"] if p.startswith(("/api/v1/federation", "/users/"))]
+
+
+def _check_documented(app, spec):
     for rule in app.url_map.iter_rules():
         if not rule.rule.startswith(DOCUMENTED_PREFIXES):
             continue
@@ -47,8 +71,14 @@ def test_every_lastfm_method_is_documented(spec):
     assert len(request_schemas) == len(METHODS)
 
 
-def test_ui_routes_declare_bearer_auth(spec):
-    public = {("/api/v1/auth/login", "post"), ("/api/v1/auth/register", "post")}
+def test_ui_routes_declare_bearer_auth(fed_spec):
+    spec = fed_spec  # includes the federation API
+    public = {
+        ("/api/v1/auth/login", "post"),
+        ("/api/v1/auth/register", "post"),
+        ("/api/v1/federation/profiles/{username}", "get"),
+        ("/api/v1/federation/profiles/{username}/posts/{post_uuid}", "get"),
+    }
     for path, operations in spec["paths"].items():
         if not path.startswith("/api/v1/"):
             continue
@@ -67,9 +97,11 @@ def test_docs_pages_are_served(client):
     assert client.get("/api/redoc").status_code == 200
 
 
-def test_committed_spec_is_up_to_date(spec):
+def test_committed_spec_is_up_to_date():
+    from scrobbler.openapi.export import build_spec
+
     committed = json.loads(COMMITTED_SPEC.read_text())
-    assert committed == spec, (
+    assert committed == build_spec(), (
         "docs/openapi.json is stale. Regenerate it with: "
-        "uv run flask --app scrobbler openapi write --format=json docs/openapi.json"
+        "uv run python -m scrobbler.openapi.export docs/openapi.json"
     )

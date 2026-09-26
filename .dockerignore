@@ -11,3 +11,4 @@ tests
 docs
 deploy/grafana
 deploy/prometheus
+# (scripts/interop is used by the interop driver image)
