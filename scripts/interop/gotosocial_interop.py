@@ -210,6 +210,12 @@ class Scrobbler:
         if status not in (200, 204):
             fail(f"{action} follower: {status} {body}")
 
+    def posts(self):
+        status, body = api("GET", f"{SCROBBLER_API}/federation/posts", self.token)
+        if status != 200:
+            fail(f"listing posts: {status} {body}")
+        return body
+
 
 class GoToSocial:
     def __init__(self, token):
@@ -248,6 +254,12 @@ class GoToSocial:
         if status != 200 or not body:
             fail(f"relationship: {status} {body}")
         return body[0]
+
+    def home_timeline(self):
+        status, body = api("GET", f"{GTS}/api/v1/timelines/home", self.token)
+        if status != 200:
+            fail(f"home timeline: {status} {body}")
+        return body
 
 
 def main():
@@ -347,8 +359,54 @@ def main():
         ),
     )
 
+    step("Re-follow: left in place for the post check (run.sh's second driver pass)")
+    alice.settings(manually_approves_followers=False)
+    gts.follow(account_id)
+    wait_for("GoToSocial to be following", lambda: gts.relationship(account_id)["following"])
+
     step("All interop checks passed")
 
 
+def check_posts():
+    """Second phase, run by run.sh after it triggers `flask federation post-weekly
+    --now` directly in the api container (this container has no docker access to do that
+    itself). Checks the post reaches the already-following GoToSocial account's home
+    timeline as a private (followers-only) status with the expected text, then deletes
+    it and checks it disappears there too."""
+    step("Getting a GoToSocial access token")
+    gts = GoToSocial(gotosocial_token())
+    alice = Scrobbler()  # register-or-login: the same account main() set up
+    account = gts.resolve("@alice@scrobble.test")
+    account_id = account["id"]
+    if not gts.relationship(account_id)["following"]:
+        fail("GoToSocial isn't following alice; run the main interop flow first")
+
+    step("The weekly summary reaches GoToSocial's home timeline")
+    posted = wait_for(
+        "the weekly summary in GoToSocial's home timeline",
+        lambda: next(
+            (s for s in gts.home_timeline() if s["account"]["acct"] == "alice@scrobble.test"),
+            None,
+        ),
+    )
+    if posted["visibility"] != "private":
+        fail(f"expected private (followers-only) visibility, got {posted['visibility']!r}")
+    if "My week in music" not in posted["content"]:
+        fail(f"unexpected content: {posted['content']!r}")
+    print(f"   {posted['visibility']} post: {posted['content'][:80]!r}")
+
+    step("Deleting the post removes it from GoToSocial too")
+    [post, *_] = alice.posts()
+    status, body = api("DELETE", f"{SCROBBLER_API}/federation/posts/{post['id']}", alice.token)
+    if status != 204:
+        fail(f"deleting the post: {status} {body}")
+    wait_for(
+        "the post to disappear from GoToSocial's home timeline",
+        lambda: not any(s["id"] == posted["id"] for s in gts.home_timeline()),
+    )
+
+    step("All post interop checks passed")
+
+
 if __name__ == "__main__":
-    main()
+    check_posts() if "--check-posts" in sys.argv[1:] else main()

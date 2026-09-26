@@ -76,6 +76,10 @@ def _check_and_post(settings: FederationSettings, now_utc: datetime) -> str:
 
     tz = schedule.resolve_timezone(settings.timezone)
     start, end, key = schedule.target_week(now_utc, tz)
+    return _post_for_window(user, key, start, end)
+
+
+def _post_for_window(user, key: str, start: datetime, end: datetime) -> str:
     if publishing.has_post(user.id, KIND, key):
         return "already_posted"  # the common case: checked before, nothing new to do
 
@@ -88,6 +92,28 @@ def _check_and_post(settings: FederationSettings, now_utc: datetime) -> str:
     text, html = build_content(count, top_artists, top_tracks)
     post = publishing.publish(user.id, user.username, KIND, key, text=text, html=html)
     return "posted" if post is not None else "already_posted"  # lost a race with another pass
+
+
+def post_now(user_id: int, now_utc: datetime | None = None) -> str:
+    """Post this user's summary immediately, for the week still in progress, ignoring
+    the Monday-09:00 gate. For operators (`flask federation post-weekly --now`) and the
+    interop test - not part of the automated pipeline (check_and_post/check_all), so it
+    isn't itself gated on post_weekly_summary being checked by a worker pass."""
+    settings = sharing.settings_for(user_id)
+    if not (settings.enabled and settings.post_weekly_summary):
+        result = "disabled"
+    else:
+        user = accounts.get_user(user_id)
+        if user is None:
+            result = "disabled"
+        else:
+            now_utc = now_utc or datetime.now(UTC)
+            tz = schedule.resolve_timezone(settings.timezone)
+            start = schedule.current_week_start(now_utc, tz)
+            key = schedule.week_key(start.astimezone(tz).date())
+            result = _post_for_window(user, key, start, now_utc)
+    fed_metrics.weekly_total.labels(result=result).inc()
+    return result
 
 
 def preview(user_id: int, now_utc: datetime | None = None) -> tuple[str, str] | None:

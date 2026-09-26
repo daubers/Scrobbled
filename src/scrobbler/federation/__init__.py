@@ -30,11 +30,13 @@ def init_app(app: Flask) -> None:
 
     from scrobbler.api import get_api
     from scrobbler.federation import api, openapi, web
+    from scrobbler.federation.cli import federation_cli
 
     app.register_blueprint(web.bp)
     core_api = get_api(app)
     core_api.register_blueprint(api.blp, url_prefix="/api/v1/federation")
     openapi.register(app, core_api)
+    app.cli.add_command(federation_cli)
 
     from scrobbler import events, worker
     from scrobbler.federation import delivery, inbox

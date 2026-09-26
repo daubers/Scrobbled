@@ -82,3 +82,17 @@ def test_resolve_timezone_falls_back_to_utc_for_bad_names(name):
 def test_resolve_timezone_passes_through_valid_names():
     assert schedule.resolve_timezone("Europe/London") == ZoneInfo("Europe/London")
     assert schedule.resolve_timezone("UTC") == ZoneInfo("UTC")
+
+
+def test_week_key():
+    assert schedule.week_key(datetime(2025, 12, 29).date()) == "2026-W01"
+    assert schedule.week_key(datetime(2026, 1, 5).date()) == "2026-W02"
+    assert schedule.week_key(datetime(2026, 1, 12).date()) == "2026-W03"
+
+
+def test_current_week_start_is_this_weeks_monday_local():
+    tz = ZoneInfo("Europe/London")
+    # A Wednesday, mid-morning UTC
+    now = local("UTC", 2026, 1, 7, 10)
+    start = schedule.current_week_start(now, tz)
+    assert start.astimezone(tz) == local("Europe/London", 2026, 1, 5)

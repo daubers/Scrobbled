@@ -165,3 +165,66 @@ def test_deleting_a_weekly_post_works_like_any_other_post(fed_ctx, user, sharing
     db.session.commit()
     assert activity.activity_type == "Delete"
     assert db.session.get(FederationPost, post.id).deleted_at is not None
+
+
+# --- post_now: for operators (flask federation post-weekly --now) and the interop test ---
+
+# Wednesday of the same week a_scrobble_in_the_target_week plays into (2026-01-06 is the
+# Tuesday of ISO week 2026-W02, Jan 5-11), well before that week's own posting gate.
+MID_WEEK = datetime(2026, 1, 7, 15, tzinfo=UTC)
+
+
+def test_post_now_posts_the_week_in_progress(fed_ctx, user, sharing_settings):
+    a_scrobble_in_the_target_week(user)
+    outcome = weekly.post_now(user.id, MID_WEEK)
+    assert outcome == "posted"
+    [post] = posts_for(user.id)
+    assert post.key == "weekly:2026-W02"
+    assert "1 play" in post.content_text
+
+
+def test_post_now_is_idempotent(fed_ctx, user, sharing_settings):
+    a_scrobble_in_the_target_week(user)
+    first = weekly.post_now(user.id, MID_WEEK)
+    second = weekly.post_now(user.id, MID_WEEK)
+    assert (first, second) == ("posted", "already_posted")
+    assert len(posts_for(user.id)) == 1
+
+
+def test_post_now_skips_an_empty_week(fed_ctx, user, sharing_settings):
+    assert weekly.post_now(user.id, MID_WEEK) == "skipped_empty"
+    assert posts_for(user.id) == []
+
+
+def test_post_now_requires_sharing(fed_ctx, user):
+    a_scrobble_in_the_target_week(user)
+    assert weekly.post_now(user.id, MID_WEEK) == "disabled"
+
+
+def test_post_now_requires_weekly_summaries_on(fed_ctx, user, sharing_settings):
+    sharing.update(user.id, {"post_weekly_summary": False})
+    a_scrobble_in_the_target_week(user)
+    assert weekly.post_now(user.id, MID_WEEK) == "disabled"
+
+
+def test_post_weekly_cli_command(fed_app, fed_ctx, user, sharing_settings):
+    played(user, "Radiohead", "Reckoner", datetime.now(UTC))
+    result = fed_app.test_cli_runner().invoke(
+        args=["federation", "post-weekly", "--user", "alice", "--now"]
+    )
+    assert result.exit_code == 0, result.output
+    assert "Posted" in result.output
+    assert len(posts_for(user.id)) == 1
+
+
+def test_post_weekly_cli_command_requires_the_now_flag(fed_app):
+    result = fed_app.test_cli_runner().invoke(args=["federation", "post-weekly", "--user", "alice"])
+    assert result.exit_code != 0
+
+
+def test_post_weekly_cli_command_rejects_an_unknown_user(fed_app, fed_ctx):
+    result = fed_app.test_cli_runner().invoke(
+        args=["federation", "post-weekly", "--user", "nobody", "--now"]
+    )
+    assert result.exit_code != 0
+    assert "No such user" in result.output

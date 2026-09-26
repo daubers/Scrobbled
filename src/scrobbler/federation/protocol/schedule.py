@@ -4,10 +4,16 @@ Weeks run Monday 00:00 to Sunday 24:00 *local time*, computed in the zone itself
 a fixed UTC offset), so the window is correct across a daylight-saving change.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 POST_HOUR = 9  # local time a week's summary becomes postable, on the following Monday
+
+
+def week_key(day: date) -> str:
+    """The ISO year-week key (e.g. "2026-W02") for the week a date falls in."""
+    year, week, _ = day.isocalendar()
+    return f"{year}-W{week:02d}"
 
 
 def target_week(now_utc: datetime, tz: ZoneInfo) -> tuple[datetime, datetime, str]:
@@ -26,8 +32,7 @@ def target_week(now_utc: datetime, tz: ZoneInfo) -> tuple[datetime, datetime, st
 
     start_local = datetime(week_start.year, week_start.month, week_start.day, tzinfo=tz)
     end_local = start_local + timedelta(days=7)  # wall-clock +7 days: DST-correct on conversion
-    year, week, _ = week_start.isocalendar()
-    return start_local.astimezone(UTC), end_local.astimezone(UTC), f"{year}-W{week:02d}"
+    return start_local.astimezone(UTC), end_local.astimezone(UTC), week_key(week_start)
 
 
 def current_week_start(now_utc: datetime, tz: ZoneInfo) -> datetime:
