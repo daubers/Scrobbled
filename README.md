@@ -92,14 +92,21 @@ Imports run in the background in the `worker` service. The page shows progress, 
 
 Unlike live scrobbles, imports keep plays of any age. They still skip rows with no artist or track, and plays dated in the future. Plays already in your history are skipped, so importing again is safe.
 
-## Sharing on the fediverse (in development)
+## Sharing on the fediverse
 
 Users can make their profile findable from Mastodon and other fediverse apps as `@name@<your UI host>`, and be followed:
 
 - Follows are accepted automatically, or wait for approval if the user turns that on.
 - The **Followers** page lists requests, followers and blocked accounts, with approve, decline, remove, block and unblock.
 
-Posts (weekly summaries, milestones, now playing) are still being built; see `docs/design/activitypub.md`. Federation is tested in CI against a real GoToSocial server (`scripts/interop/run.sh`).
+Once someone follows, the **Sharing** page's **What to post** section controls what they see:
+
+- **Weekly summary**: play count and top artist(s), posted once a week (Monday 09:00 in the user's own time zone, for the Monday–Sunday week that just ended). A live preview on the same page shows what it would say so far.
+- **Milestones**: total scrobbles, an artist's plays, and a new entry into the all-time top 10 — each posted once, the first time it's reached. History already on file when sharing is turned on, or added by an import, is never posted about retroactively.
+
+Both are on by default and can be switched off independently. Posts use the same visibility as the profile (followers only by default, or unlisted/public); the **Posts** page lists a user's own posts with delete (sends a `Delete` to whoever received it). "Now playing" isn't posted yet; see `docs/design/activitypub.md`.
+
+Federation is tested in CI against a real GoToSocial server (`scripts/interop/run.sh`), including that a posted weekly summary reaches a follower's timeline with the right content and visibility, and disappears from it when deleted.
 
 It's **off unless the server enables it**, and then **off for each user** until they switch it on under **Sharing**. To enable it:
 

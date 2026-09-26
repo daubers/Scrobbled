@@ -1,5 +1,13 @@
 # ActivityPub phase 3: posts
 
+**Status: done** on `feature/activitypub` (`bc717c2` … `860d4d0`). The GoToSocial interop test now covers posts too: a weekly summary reaches a follower's home timeline as `private` with the expected content, and disappears from it when deleted. As with phases 1-2, a manual pass with a real Mastodon account through a tunnel is still to do before merging.
+
+Where this differed from the plan:
+
+- **A top-10 entry needs a real top 10 first.** With fewer than `TOP_N` distinct artists, every first play of a new artist would trivially "enter the top 10" — caught by a test that used the real (unpatched) thresholds instead of always overriding them down for speed. Nothing is posted until a user actually has that many distinct artists.
+- **`post_now()` is a separate path from the normal check.** `flask federation post-weekly --now` and the Sharing page's preview both need the week still *in progress*, not the last one whose Monday-09:00 gate has passed; they share the posting logic (`_post_for_window`) with the normal `check_and_post`, but compute a different window.
+- **The Note's `url` needed the username, not just the post's id.** `post.html` (the UI page a browser lands on) has no other way to know whose post to look up; caught while wiring up the UI, not by a test written against the plan.
+
 This implements phase 3 of [activitypub.md](activitypub.md): **weekly summaries** and **milestones**. Now playing is phase 4. It builds on [phase 2](activitypub-phase2.md): followers, signed delivery and retries.
 
 **Outcome:**

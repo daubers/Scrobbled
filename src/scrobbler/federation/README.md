@@ -60,18 +60,58 @@ Every ActivityPub ID is built from `FEDERATION_BASE_URL`, never from the incomin
 | `keys.py` | Key pairs, created once and encrypted at rest |
 | `sharing.py` | Per-user settings, and who is sharing |
 | `ids.py` | Our ActivityPub ids, all from `FEDERATION_BASE_URL` |
-| `web.py` | The endpoints other servers call |
+| `web.py` | The endpoints other servers call, including a paged outbox and individual posts |
 | `api.py` and `schemas.py` | `/api/v1/federation/*` for the web UI |
 | `openapi.py` | OpenAPI descriptions of `web.py`'s endpoints |
 | `metrics.py` | Federation's own Prometheus metrics |
+| `cli.py` | `flask federation ...` admin commands |
+| `publishing/` | Posts: shared publish/delete machinery, and one module per kind (see below) |
+
+## Publishing
+
+`publishing/base.py` is the only place that knows how to actually post: build the
+`Note`/`Create`, store it, address it from the user's current visibility, and fan it out
+to accepted followers' inboxes. It's idempotent (one row per `(user, kind:key)`, via
+`federation_posts`' unique constraint) and used for both publishing and deleting.
+
+Each *kind* of post is its own small module that only decides **when** to post and what
+the text says, then calls into `base.py`:
+
+- `publishing/weekly.py`: once a week (`check_and_post`/`check_all`, the
+  `federation.weekly` worker task), for the Monday–Sunday week whose posting gate has
+  passed. `post_now()` instead posts the week still in progress immediately, ignoring the
+  gate — used by `flask federation post-weekly --user <name> --now` and `preview()` (a
+  read-only variant for the Sharing page's live preview, never stored).
+- `publishing/milestones.py`: scrobble-count, artist-plays and top-10-entry thresholds,
+  each posted once. A live scrobble queues a `FederationPendingCheck` row (collapsing
+  repeats), drained by the `federation.milestones` worker task. `set_baseline()` marks
+  every threshold already passed without posting, called when a user turns sharing on
+  and after an import finishes, so old history never produces a burst of "milestone"
+  posts.
+
+Adding a third kind (e.g. now playing) means adding another module here with the same
+shape — decide when, build the text, call `publishing.publish()` — not touching
+`base.py`.
 
 ## Worker tasks
 
-`federation.inbox` (process received activities), `federation.deliver` (send queued ones), `federation.inbox.maintenance` (re-queue stalled, prune after 30 days) and `federation.gauges` (queue and follower gauges). All are registered only when federation is on.
+`federation.inbox` (process received activities), `federation.deliver` (send queued
+ones), `federation.inbox.maintenance` (re-queue stalled, prune after 30 days),
+`federation.gauges` (queue and follower gauges), `federation.milestones` (drain pending
+milestone checks) and `federation.weekly` (check every sharing user for a due weekly
+summary, every 15 minutes). All are registered only when federation is on.
 
 ## Interop
 
-`scripts/interop/run.sh` runs Scrobbler against a real GoToSocial server on a private `.test` network and checks the whole follow life cycle. CI runs it on every push. GoToSocial 0.22.1 ignores a Reject of an already-accepted follow (a TODO in its code, fixed on its main branch), so that one check on its side is skipped until a release includes the fix.
+`scripts/interop/run.sh` runs Scrobbler against a real GoToSocial server on a private
+`.test` network. `scripts/interop/gotosocial_interop.py` checks the whole follow life
+cycle, then `run.sh` seeds a scrobble, runs `flask federation post-weekly --now` directly
+in the `api` container, and runs the driver a second time (`--check-posts`) to confirm
+the post reaches GoToSocial's home timeline with the right content and `private`
+(followers-only) visibility, and disappears from it once deleted. CI runs the whole
+thing on every push. GoToSocial 0.22.1 ignores a Reject of an already-accepted follow (a
+TODO in its code, fixed on its main branch), so that one check on its side is skipped
+until a release includes the fix.
 
 ## Migrations
 
