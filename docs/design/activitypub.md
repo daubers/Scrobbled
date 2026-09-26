@@ -357,7 +357,7 @@ Each phase can be released on its own, with its migration, docs, OpenAPI updates
 1. **Discoverable profile.** Settings, keys, WebFinger, the actor, NodeInfo and the Sharing page. A user can turn sharing on and be found from Mastodon, but can't be followed yet.
 2. **Followers.** Inbox, signature verification (both schemes), the delivery queue with retries and signing, `Accept`, removing and blocking followers, the Followers page, and the GoToSocial CI test.
 3. **Posts.** The outbox, weekly summaries, milestones, and deleting posts when sharing is turned off. Adds the Federation dashboard and alerts.
-4. **Now playing.** The profile-field mode, then optional posts.
+4. **Now playing.** The profile-field mode, then optional posts. See [phase 4](activitypub-phase4.md).
 
 ## Later: following and `Listen` activities
 
@@ -376,11 +376,11 @@ Also settled:
 
 - **Domain: the UI's.** Handles and actor URLs are both on the UI host, and the UI's nginx forwards the ActivityPub paths to the API.
 - **Visibility: followers only by default**, and each user can change it on their Sharing settings.
+- **Now playing: the profile field, plus opt-in posts** (phase 4) — not just the recommended default, both.
 
-Still open (neither is needed before phase 3):
+Still open:
 
-1. **Now-playing default** once a user turns it on: the profile field (recommended), or posts?
-2. **Does it need an admin?** Phase 2 assumes domain blocks set in configuration. A real moderation UI (reports, per-domain policies) would be a separate piece of work.
+1. **Does it need an admin?** Phase 2 assumes domain blocks set in configuration. A real moderation UI (reports, per-domain policies) would be a separate piece of work.
 
 ## Sources
 
