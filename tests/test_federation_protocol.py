@@ -209,6 +209,15 @@ def test_delete_is_a_tombstone():
     assert (doc["to"], doc["cc"]) == (["FOLLOWERS"], ["PUBLIC"])
 
 
+def test_update_wraps_the_actor_document():
+    actor_doc = {"id": "actor", "type": "Person", "attachment": []}
+    doc = vocab.update("activity-id", "actor", actor_doc, to=["FOLLOWERS"])
+    assert (doc["type"], doc["id"], doc["actor"]) == ("Update", "activity-id", "actor")
+    assert doc["object"] == actor_doc
+    assert doc["to"] == ["FOLLOWERS"]
+    assert doc["@context"] == vocab.AS_CONTEXT
+
+
 def test_nodeinfo():
     assert nodeinfo.discovery(BASE)["links"][0]["href"] == f"{BASE}/nodeinfo/2.1"
     doc = nodeinfo.document(version="0.2.0", users_total=3, open_registrations=True)

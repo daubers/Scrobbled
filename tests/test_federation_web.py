@@ -66,6 +66,17 @@ def test_actor_document(fed_client, sharing_user):
     assert doc["manuallyApprovesFollowers"] is False  # the user's setting (off by default)
     assert (doc["discoverable"], doc["indexable"]) == (False, False)
     assert doc["url"] == "http://localhost:8080/profile.html?u=alice"
+    assert doc["attachment"] == []  # nothing playing
+
+
+def test_actor_document_shows_now_playing_live(fed_client, fed_ctx, sharing_user):
+    from scrobbler.services.scrobbles import TrackInput, update_now_playing
+
+    update_now_playing(sharing_user, TrackInput(artist="Radiohead", track="Reckoner"))
+    doc = fed_client.get("/users/alice", headers=AP).get_json()
+    assert doc["attachment"] == [
+        {"type": "PropertyValue", "name": "Now playing", "value": "Reckoner by Radiohead"}
+    ]
 
 
 def test_ids_come_from_config_not_the_request(fed_client, sharing_user):

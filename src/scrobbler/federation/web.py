@@ -7,8 +7,8 @@ import json
 from flask import Blueprint, Response, current_app, redirect, request
 
 from scrobbler.extensions import db
+from scrobbler.federation import actors, ids, inbox, keys, publishing, sharing
 from scrobbler.federation import followers as follower_state
-from scrobbler.federation import ids, inbox, keys, publishing, sharing
 from scrobbler.federation import metrics as fed_metrics
 from scrobbler.federation.models import FederationActivity
 from scrobbler.federation.protocol import hostmeta, media, nodeinfo, vocab, webfinger
@@ -130,18 +130,7 @@ def actor(username: str):
         return _json(doc, cache=0)
     user, settings = found
     _found("actor")
-    urls = _urls(user.username)
-    doc = vocab.person(
-        urls,
-        username=user.username,
-        name=settings.display_name or user.username,
-        summary=settings.bio,
-        public_key_pem=keys.key_for(user.id).public_key_pem,
-        manually_approves_followers=settings.manually_approves_followers,
-        discoverable=settings.discoverable,
-        indexable=settings.indexable,
-        published=settings.created_at.isoformat().replace("+00:00", "Z"),
-    )
+    doc = actors.build_document(_urls(user.username), user, settings)
     return _json(doc)
 
 

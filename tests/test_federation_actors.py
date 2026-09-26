@@ -1,0 +1,36 @@
+"""Actor document building (actors.py): shared by the live GET /users/<u> route and the
+now-playing Update(Person) push."""
+
+from scrobbler.federation import actors, sharing
+from scrobbler.federation.protocol import vocab
+from scrobbler.services.scrobbles import TrackInput, update_now_playing
+
+URLS = vocab.actor_urls(
+    "https://scrobble.test", "alice", "https://scrobble.test/profile.html?u=alice"
+)
+
+
+def test_now_playing_field_is_empty_when_nothing_is_playing(fed_ctx, user):
+    assert actors.now_playing_field(user) == []
+
+
+def test_now_playing_field_shows_the_current_track(fed_ctx, user):
+    update_now_playing(user, TrackInput(artist="Radiohead", track="Reckoner"))
+    assert actors.now_playing_field(user) == [("Now playing", "Reckoner by Radiohead")]
+
+
+def test_build_document_includes_the_now_playing_field(fed_ctx, user):
+    sharing.update(user.id, {"enabled": True, "display_name": "Alice", "bio": "Hi."})
+    update_now_playing(user, TrackInput(artist="Radiohead", track="Reckoner"))
+    settings = sharing.settings_for(user.id)
+    doc = actors.build_document(URLS, user, settings)
+    assert doc["attachment"] == [
+        {"type": "PropertyValue", "name": "Now playing", "value": "Reckoner by Radiohead"}
+    ]
+
+
+def test_build_document_has_no_now_playing_field_when_idle(fed_ctx, user):
+    sharing.update(user.id, {"enabled": True})
+    settings = sharing.settings_for(user.id)
+    doc = actors.build_document(URLS, user, settings)
+    assert doc["attachment"] == []

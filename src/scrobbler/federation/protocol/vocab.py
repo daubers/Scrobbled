@@ -221,6 +221,19 @@ def undo(activity_id: str, actor_id: str, undone: dict) -> dict:
     }
 
 
+def update(activity_id: str, actor_id: str, obj: dict, *, to: list[str]) -> dict:
+    """Tells already-following servers something about the actor changed (their now
+    playing field, here), so they don't have to re-fetch it to notice."""
+    return {
+        "@context": AS_CONTEXT,
+        "id": activity_id,
+        "type": "Update",
+        "actor": actor_id,
+        "object": obj,
+        "to": list(to),
+    }
+
+
 def hashtag(name: str) -> dict:
     """A Hashtag tag, e.g. #Scrobbler. No href: we don't serve tag pages, and Mastodon
     still recognises and indexes the tag from `name` alone."""
