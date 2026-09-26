@@ -2,7 +2,7 @@
 
 from scrobbler.extensions import db
 from scrobbler.federation import keys
-from scrobbler.federation.models import VISIBILITIES, FederationSettings
+from scrobbler.federation.models import NOW_PLAYING_MODES, VISIBILITIES, FederationSettings
 from scrobbler.federation.protocol.schedule import is_valid_timezone
 from scrobbler.services import accounts
 
@@ -17,6 +17,7 @@ EDITABLE = (
     "timezone",
     "post_weekly_summary",
     "post_milestones",
+    "now_playing_mode",
 )
 
 
@@ -36,6 +37,7 @@ def settings_for(user_id: int) -> FederationSettings:
             timezone="UTC",
             post_weekly_summary=True,
             post_milestones=True,
+            now_playing_mode="off",
         )
     return settings
 
@@ -48,6 +50,8 @@ def update(user_id: int, changes: dict) -> tuple[FederationSettings, bool | None
         raise ValueError(f"not editable: {sorted(unknown)}")
     if changes.get("visibility", "followers") not in VISIBILITIES:
         raise ValueError("visibility must be one of " + ", ".join(VISIBILITIES))
+    if changes.get("now_playing_mode", "off") not in NOW_PLAYING_MODES:
+        raise ValueError("now_playing_mode must be one of " + ", ".join(NOW_PLAYING_MODES))
     if "timezone" in changes and not is_valid_timezone(changes["timezone"]):
         raise ValueError(f"not a known time zone: {changes['timezone']!r}")
     settings = settings_for(user_id)

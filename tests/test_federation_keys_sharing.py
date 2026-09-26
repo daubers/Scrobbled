@@ -19,11 +19,12 @@ def test_unsaved_defaults_have_every_field_populated(fed_ctx, user):
     """settings_for() builds a transient object when a user has never saved settings; its
     column defaults apply only on INSERT, so every field has to be set by hand."""
     settings = sharing.settings_for(user.id)
-    assert (settings.timezone, settings.post_weekly_summary, settings.post_milestones) == (
-        "UTC",
-        True,
-        True,
-    )
+    assert (
+        settings.timezone,
+        settings.post_weekly_summary,
+        settings.post_milestones,
+        settings.now_playing_mode,
+    ) == ("UTC", True, True, "off")
 
 
 def test_enabling_creates_a_key_pair_that_signs(fed_ctx, user):
@@ -83,6 +84,7 @@ def test_shared_user_is_case_insensitive_and_requires_sharing(fed_ctx, user, mak
         {"enabled": True, "handle": "x"},
         {"timezone": "Mars/Phobos"},
         {"timezone": ""},
+        {"now_playing_mode": "always"},
     ],
 )
 def test_invalid_changes_are_rejected(fed_ctx, user, changes):
@@ -93,3 +95,9 @@ def test_invalid_changes_are_rejected(fed_ctx, user, changes):
 def test_a_valid_timezone_can_be_set(fed_ctx, user):
     settings, _ = sharing.update(user.id, {"timezone": "Pacific/Auckland"})
     assert settings.timezone == "Pacific/Auckland"
+
+
+@pytest.mark.parametrize("mode", ["off", "profile", "posts"])
+def test_now_playing_mode_can_be_set(fed_ctx, user, mode):
+    settings, _ = sharing.update(user.id, {"now_playing_mode": mode})
+    assert settings.now_playing_mode == mode

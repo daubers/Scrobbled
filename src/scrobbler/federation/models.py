@@ -21,6 +21,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from scrobbler.extensions import db
 
 VISIBILITIES = ("followers", "unlisted", "public")
+NOW_PLAYING_MODES = ("off", "profile", "posts")
 
 
 def utcnow() -> datetime:
@@ -44,6 +45,8 @@ class FederationSettings(db.Model):
     timezone: Mapped[str] = mapped_column(String(64), default="UTC")
     post_weekly_summary: Mapped[bool] = mapped_column(Boolean, default=True)
     post_milestones: Mapped[bool] = mapped_column(Boolean, default=True)
+    # off, profile or posts (posts implies profile too)
+    now_playing_mode: Mapped[str] = mapped_column(String(16), default="off")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
@@ -247,3 +250,20 @@ class FederationPendingCheck(db.Model):
     )
     since: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     reason: Mapped[str] = mapped_column(String(32), default="scrobble")
+
+
+class FederationNowPlaying(db.Model):
+    """What we've last told the fediverse is playing, as opposed to `now_playing` in the
+    core schema, which is what's actually playing. A "key" is `artist\\x1ftrack\\x1f
+    started_at`: playing the same track again later is a new now-playing moment, not a
+    stale repeat, and it doubles as federation_posts.key for the posts side."""
+
+    __tablename__ = "federation_now_playing"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    profile_key: Mapped[str | None] = mapped_column(String(512))
+    profile_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    post_key: Mapped[str | None] = mapped_column(String(512))
+    post_posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
