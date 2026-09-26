@@ -37,8 +37,9 @@ def note_url(username: str, post_uuid: str) -> str:
 
 
 def post_page_url(username: str, post_uuid: str) -> str:
-    """Where a browser following the Note's `url` lands, in the web UI."""
-    return f"{current_app.config['UI_BASE_URL']}/post.html?id={post_uuid}"
+    """Where a browser following the Note's `url` lands, in the web UI. Carries the
+    username too: the UI page has no other way to know whose post to look up."""
+    return f"{current_app.config['UI_BASE_URL']}/post.html?u={username}&id={post_uuid}"
 
 
 def username_from_actor_id(uri: str | None) -> str | None:

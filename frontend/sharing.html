@@ -61,6 +61,29 @@
       </fieldset>
 
       <fieldset class="choices">
+        <legend>What to post</legend>
+        <div class="choice">
+          <input type="checkbox" id="post_weekly_summary" name="post_weekly_summary">
+          <label for="post_weekly_summary"><strong>Weekly summary</strong><span class="muted">Your play count and top artist, once a week.</span></label>
+        </div>
+        <div class="choice">
+          <input type="checkbox" id="post_milestones" name="post_milestones">
+          <label for="post_milestones"><strong>Milestones</strong><span class="muted">Scrobble-count, artist-plays and top-10 milestones as you reach them.</span></label>
+        </div>
+        <div class="field">
+          <label for="timezone">Time zone</label>
+          <input id="timezone" name="timezone" list="timezones" autocomplete="off">
+          <datalist id="timezones"></datalist>
+          <span class="hint">Decides when your week ends for the weekly summary.</span>
+        </div>
+        <div class="button-row">
+          <button class="button button-quiet" type="button" id="preview-weekly">Preview this week's summary</button>
+        </div>
+        <div class="preview-box" id="weekly-preview" hidden></div>
+        <p class="muted"><a href="posts.html">See your posts</a></p>
+      </fieldset>
+
+      <fieldset class="choices">
         <legend>Profile</legend>
         <div class="field">
           <label for="display_name">Display name</label>

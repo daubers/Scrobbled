@@ -1953,6 +1953,150 @@
         ]
       }
     },
+    "/api/v1/federation/preview/weekly": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyPreview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Preview this week's summary",
+        "description": "What it would say right now, for the week still in progress. Never posted or stored.",
+        "tags": [
+          "Federation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/federation/posts": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Post"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Your posts",
+        "description": "Newest first, including deleted ones (their text stays visible to you; deleted_at\nshows when).",
+        "tags": [
+          "Federation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/federation/posts/{post_id}": {
+      "delete": {
+        "responses": {
+          "409": {
+            "description": "Already deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such post",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Delete a post",
+        "description": "Sends a Delete to whoever received it.",
+        "tags": [
+          "Federation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "post_id",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      ]
+    },
     "/api/v1/federation/profiles/{username}": {
       "get": {
         "responses": {
@@ -1990,6 +2134,60 @@
         {
           "in": "path",
           "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/api/v1/federation/profiles/{username}/posts/{post_uuid}": {
+      "get": {
+        "responses": {
+          "404": {
+            "description": "Not found, not public, or deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicPost"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "A public or unlisted post",
+        "description": "For the web UI's post page (the browser landing spot for a Note's `url`, since it\ncan't itself speak ActivityPub).",
+        "tags": [
+          "Federation"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        {
+          "in": "path",
+          "name": "post_uuid",
           "required": true,
           "schema": {
             "type": "string",
@@ -4183,6 +4381,19 @@
             ],
             "maxLength": 500
           },
+          "timezone": {
+            "type": "string",
+            "description": "IANA time zone, e.g. `Europe/London`. Decides when a week ends for the weekly summary.",
+            "example": "Europe/London"
+          },
+          "post_weekly_summary": {
+            "type": "boolean",
+            "description": "Post a weekly summary of your listening"
+          },
+          "post_milestones": {
+            "type": "boolean",
+            "description": "Post scrobble-count, artist-plays and top-10 milestones as you hit them"
+          },
           "handle": {
             "type": "string",
             "readOnly": true,
@@ -4250,6 +4461,19 @@
             ],
             "maxLength": 500
           },
+          "timezone": {
+            "type": "string",
+            "description": "IANA time zone, e.g. `Europe/London`. Decides when a week ends for the weekly summary.",
+            "example": "Europe/London"
+          },
+          "post_weekly_summary": {
+            "type": "boolean",
+            "description": "Post a weekly summary of your listening"
+          },
+          "post_milestones": {
+            "type": "boolean",
+            "description": "Post scrobble-count, artist-plays and top-10 milestones as you hit them"
+          },
           "handle": {
             "type": "string",
             "readOnly": true,
@@ -4276,6 +4500,48 @@
         },
         "additionalProperties": false
       },
+      "WeeklyPreview": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "html": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Post": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string",
+            "description": "weekly or milestone"
+          },
+          "text": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "PublicProfile": {
         "type": "object",
         "properties": {
@@ -4296,6 +4562,32 @@
             "example": "@alice@scrobble.example"
           },
           "actor_url": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicPost": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "html": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string",
+            "example": "@alice@scrobble.example"
+          },
+          "profile_url": {
             "type": "string"
           }
         },

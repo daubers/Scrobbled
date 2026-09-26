@@ -919,6 +919,22 @@ input {
   margin-top: 0.5rem;
 }
 
+.preview-box {
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-control);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  margin: 0.75rem 0 1.25rem;
+}
+
+.preview-box p {
+  margin: 0 0 0.5rem;
+}
+
+.preview-box p:last-child {
+  margin-bottom: 0;
+}
+
 .field textarea {
   min-height: 5rem;
   padding: 0.5rem 0.75rem;

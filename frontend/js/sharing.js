@@ -5,8 +5,20 @@ import { signedInPage } from "./layout.js";
 const form = document.getElementById("sharing");
 const messages = document.getElementById("messages");
 const handlePanel = document.getElementById("handle-panel");
-const FIELDS = ["enabled", "visibility", "manually_approves_followers", "discoverable", "indexable", "display_name", "bio"];
+const FIELDS = [
+  "enabled",
+  "visibility",
+  "manually_approves_followers",
+  "discoverable",
+  "indexable",
+  "post_weekly_summary",
+  "post_milestones",
+  "timezone",
+  "display_name",
+  "bio",
+];
 
+fillTimezoneChoices();
 await signedInPage("sharing.html");
 
 let settings;
@@ -26,6 +38,34 @@ if (settings) {
   form.hidden = false;
   form.elements.enabled.addEventListener("change", () => showHandle(form.elements.enabled.checked));
   form.addEventListener("submit", save);
+  document.getElementById("preview-weekly").addEventListener("click", previewWeekly);
+}
+
+// Free text (validated server-side), with autocomplete from the browser's own IANA list
+// when it can supply one; a picker where that's available, a plain field otherwise.
+function fillTimezoneChoices() {
+  if (typeof Intl.supportedValuesOf !== "function") return;
+  const datalist = document.getElementById("timezones");
+  replace(datalist, Intl.supportedValuesOf("timeZone").map((zone) => h("option", { value: zone })));
+}
+
+async function previewWeekly() {
+  const box = document.getElementById("weekly-preview");
+  const button = document.getElementById("preview-weekly");
+  button.disabled = true;
+  try {
+    const preview = await api("/federation/preview/weekly");
+    replace(
+      box,
+      h("p", { class: "muted" }, "What this week's summary would say so far:"),
+      h("p", { style: "white-space: pre-line" }, preview.text),
+    );
+    box.hidden = false;
+  } catch (error) {
+    replace(messages, errorBox(error.message));
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function fill(values) {
@@ -107,6 +147,9 @@ async function save(event) {
     manually_approves_followers: form.elements.manually_approves_followers.checked,
     discoverable: form.elements.discoverable.checked,
     indexable: form.elements.indexable.checked,
+    post_weekly_summary: form.elements.post_weekly_summary.checked,
+    post_milestones: form.elements.post_milestones.checked,
+    timezone: form.elements.timezone.value.trim() || "UTC",
     display_name: form.elements.display_name.value.trim() || null,
     bio: form.elements.bio.value.trim() || null,
   };

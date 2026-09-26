@@ -1,6 +1,12 @@
-from marshmallow import Schema, fields, validate
+from marshmallow import Schema, ValidationError, fields, validate
 
 from scrobbler.federation.models import VISIBILITIES
+from scrobbler.federation.protocol.schedule import is_valid_timezone
+
+
+def _valid_timezone(value: str) -> None:
+    if not is_valid_timezone(value):
+        raise ValidationError("Not a known time zone.")
 
 
 class SharingSettingsSchema(Schema):
@@ -20,6 +26,24 @@ class SharingSettingsSchema(Schema):
     indexable = fields.Boolean(metadata={"description": "Posts may be indexed for search"})
     display_name = fields.String(allow_none=True, validate=validate.Length(max=100))
     bio = fields.String(allow_none=True, validate=validate.Length(max=500))
+    timezone = fields.String(
+        validate=_valid_timezone,
+        metadata={
+            "description": (
+                "IANA time zone, e.g. `Europe/London`. Decides when a week ends for the "
+                "weekly summary."
+            ),
+            "example": "Europe/London",
+        },
+    )
+    post_weekly_summary = fields.Boolean(
+        metadata={"description": "Post a weekly summary of your listening"}
+    )
+    post_milestones = fields.Boolean(
+        metadata={
+            "description": "Post scrobble-count, artist-plays and top-10 milestones as you hit them"
+        }
+    )
     handle = fields.String(dump_only=True, metadata={"example": "@alice@scrobble.example"})
     actor_url = fields.String(dump_only=True)
     profile_url = fields.String(dump_only=True)
@@ -61,3 +85,28 @@ class BlockSchema(Schema):
     display_name = fields.String(allow_none=True)
     actor_url = fields.String()
     since = fields.DateTime()
+
+
+class PostSchema(Schema):
+    id = fields.Integer()
+    kind = fields.String(metadata={"description": "weekly or milestone"})
+    text = fields.String()
+    visibility = fields.String()
+    created_at = fields.DateTime()
+    deleted_at = fields.DateTime(allow_none=True)
+
+
+class WeeklyPreviewSchema(Schema):
+    text = fields.String()
+    html = fields.String()
+
+
+class PublicPostSchema(Schema):
+    """A public or unlisted post, for the web UI's post page (post.html)."""
+
+    text = fields.String()
+    html = fields.String()
+    created_at = fields.DateTime()
+    display_name = fields.String()
+    handle = fields.String(metadata={"example": "@alice@scrobble.example"})
+    profile_url = fields.String()

@@ -170,7 +170,7 @@ def test_post_note_browser_is_redirected_to_the_ui_page(fed_client, fed_ctx, sha
     note_uuid = post.activity.document["object"]["id"].rsplit("/", 1)[-1]
     response = fed_client.get(f"/users/alice/posts/{note_uuid}", headers={"Accept": "text/html"})
     assert response.status_code == 302
-    assert response.headers["Location"] == f"http://localhost:8080/post.html?id={note_uuid}"
+    assert response.headers["Location"] == f"http://localhost:8080/post.html?u=alice&id={note_uuid}"
 
 
 def test_nodeinfo(fed_client, sharing_user):

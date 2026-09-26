@@ -30,6 +30,14 @@ def target_week(now_utc: datetime, tz: ZoneInfo) -> tuple[datetime, datetime, st
     return start_local.astimezone(UTC), end_local.astimezone(UTC), f"{year}-W{week:02d}"
 
 
+def current_week_start(now_utc: datetime, tz: ZoneInfo) -> datetime:
+    """The UTC instant of this week's Monday 00:00 local time - the week still in
+    progress, not yet postable. For previewing what a summary would say so far."""
+    local_now = now_utc.astimezone(tz)
+    monday = local_now.date() - timedelta(days=local_now.weekday())
+    return datetime(monday.year, monday.month, monday.day, tzinfo=tz).astimezone(UTC)
+
+
 def resolve_timezone(name: str) -> ZoneInfo:
     """A user's timezone setting, or UTC for anything that isn't a valid IANA name (a
     bad or since-removed name in one user's settings must never crash the task for

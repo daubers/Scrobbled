@@ -77,6 +77,7 @@ def test_ui_routes_declare_bearer_auth(fed_spec):
         ("/api/v1/auth/login", "post"),
         ("/api/v1/auth/register", "post"),
         ("/api/v1/federation/profiles/{username}", "get"),
+        ("/api/v1/federation/profiles/{username}/posts/{post_uuid}", "get"),
     }
     for path, operations in spec["paths"].items():
         if not path.startswith("/api/v1/"):

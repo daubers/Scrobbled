@@ -11,7 +11,7 @@ import logging
 from datetime import UTC, datetime
 
 from scrobbler.extensions import db
-from scrobbler.federation import publishing
+from scrobbler.federation import publishing, sharing
 from scrobbler.federation.models import FederationSettings
 from scrobbler.federation.protocol import content, schedule
 from scrobbler.services import accounts, stats
@@ -81,6 +81,22 @@ def check_and_post(settings: FederationSettings, now_utc: datetime) -> str:
     text, html = build_content(count, top_artists, top_tracks)
     post = publishing.publish(user.id, user.username, KIND, key, text=text, html=html)
     return "posted" if post is not None else "already_posted"  # lost a race with another pass
+
+
+def preview(user_id: int, now_utc: datetime | None = None) -> tuple[str, str] | None:
+    """What a weekly summary would say right now, for the week still in progress. Never
+    stored or posted: for the Sharing page's live preview. None if the account is gone."""
+    user = accounts.get_user(user_id)
+    if user is None:
+        return None
+    settings = sharing.settings_for(user_id)
+    tz = schedule.resolve_timezone(settings.timezone)
+    now_utc = now_utc or datetime.now(UTC)
+    start = schedule.current_week_start(now_utc, tz)
+    count = stats.scrobble_count_between(user, start, now_utc)
+    top_artists = stats.top_artists_between(user, start, now_utc, limit=TOP_ARTISTS)
+    top_tracks = stats.top_tracks_between(user, start, now_utc, limit=1)
+    return build_content(count, top_artists, top_tracks)
 
 
 def check_all(now_utc: datetime | None = None) -> None:
