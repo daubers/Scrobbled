@@ -261,6 +261,15 @@ class GoToSocial:
             fail(f"home timeline: {status} {body}")
         return body
 
+    def account(self, account_id):
+        """The account as GoToSocial currently has it stored - not a fresh remote fetch
+        like resolve()'s ?resolve=true search, so this shows whether a proactive
+        Update(Person) actually reached and updated their cached copy."""
+        status, body = api("GET", f"{GTS}/api/v1/accounts/{account_id}", self.token)
+        if status != 200:
+            fail(f"account lookup: {status} {body}")
+        return body
+
 
 def main():
     step("Getting a GoToSocial access token")
@@ -372,7 +381,8 @@ def check_posts():
     --now` directly in the api container (this container has no docker access to do that
     itself). Checks the post reaches the already-following GoToSocial account's home
     timeline as a private (followers-only) status with the expected text, then deletes
-    it and checks it disappears there too."""
+    it and checks it disappears there too. Also turns now playing on and checks the
+    profile field GoToSocial has cached is updated by the periodic push."""
     step("Getting a GoToSocial access token")
     gts = GoToSocial(gotosocial_token())
     alice = Scrobbler()  # register-or-login: the same account main() set up
@@ -380,6 +390,9 @@ def check_posts():
     account_id = account["id"]
     if not gts.relationship(account_id)["following"]:
         fail("GoToSocial isn't following alice; run the main interop flow first")
+
+    step("Alice turns now playing on (run.sh already seeded a now-playing track)")
+    alice.settings(now_playing_mode="profile")
 
     step("The weekly summary reaches GoToSocial's home timeline")
     posted = wait_for(
@@ -404,6 +417,18 @@ def check_posts():
         "the post to disappear from GoToSocial's home timeline",
         lambda: not any(s["id"] == posted["id"] for s in gts.home_timeline()),
     )
+
+    step("The now-playing field reaches GoToSocial's cached copy of the profile")
+    field = wait_for(
+        "a Now playing field on GoToSocial's cached account",
+        lambda: next(
+            (f for f in gts.account(account_id)["fields"] if f["name"] == "Now playing"), None
+        ),
+        timeout=90,  # the push is throttled and only checked every 30s
+    )
+    if "Interop Now Playing" not in field["value"]:
+        fail(f"unexpected now-playing field: {field['value']!r}")
+    print(f"   Now playing: {field['value']!r}")
 
     step("All post interop checks passed")
 

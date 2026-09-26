@@ -42,19 +42,21 @@ if [ $status -ne 0 ]; then
   exit $status
 fi
 
-echo "==> Alice scrobbles something, for the weekly summary to have content"
+echo "==> Alice scrobbles something, for the weekly summary to have content, and is playing something now"
 "$compose" exec -T api python3 -c "
 from datetime import UTC, datetime
 from scrobbler import create_app
 from scrobbler.config import Config
 from scrobbler.extensions import db
 from scrobbler.models import Scrobble, User
+from scrobbler.services.scrobbles import TrackInput, update_now_playing
 
 app = create_app(Config)
 with app.app_context():
     user = db.session.scalar(db.select(User).filter_by(username='alice'))
     db.session.add(Scrobble(user_id=user.id, artist='Interop Artist', track='Interop Track', played_at=datetime.now(UTC)))
     db.session.commit()
+    update_now_playing(user, TrackInput(artist='Interop Artist', track='Interop Now Playing'))
 "
 
 echo "==> Posting alice's weekly summary immediately"
