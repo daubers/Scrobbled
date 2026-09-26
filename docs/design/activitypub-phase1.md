@@ -1,6 +1,6 @@
 # ActivityPub phase 1: discoverable profile
 
-**Status: done** on `feature/activitypub` (`98c6554` … `913ef67`). The one gap is the manual check with a real Mastodon account through a tunnel: it's still to do, and needs a public HTTPS address.
+**Status: done** on `feature/activitypub` (`98c6554` … `913ef67`). The manual check with a real Mastodon account through a tunnel (`cloudflared`) is also done: WebFinger, the actor and the key all resolved correctly from mastodon.social and activitypub.academy.
 
 This implements phase 1 of [activitypub.md](activitypub.md). Handles and actor URLs are on the **UI's domain**, and posts are **followers only by default** (a per-user setting).
 

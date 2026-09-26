@@ -1,6 +1,6 @@
 # ActivityPub phase 3: posts
 
-**Status: done** on `feature/activitypub` (`bc717c2` … `860d4d0`). The GoToSocial interop test now covers posts too: a weekly summary reaches a follower's home timeline as `private` with the expected content, and disappears from it when deleted. As with phases 1-2, a manual pass with a real Mastodon account through a tunnel is still to do before merging.
+**Status: done** on `feature/activitypub` (`bc717c2` … `860d4d0`). The GoToSocial interop test now covers posts too: a weekly summary reaches a follower's home timeline as `private` with the expected content, and disappears from it when deleted. The manual pass with a real Mastodon account through a tunnel (done alongside phase 4's, see its notes) confirmed a forced weekly summary posted and deleted correctly there too.
 
 Where this differed from the plan:
 

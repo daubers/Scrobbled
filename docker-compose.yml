@@ -29,7 +29,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://scrobbler:${POSTGRES_PASSWORD:-scrobbler}@db:5432/scrobbler
       SECRET_KEY: ${SECRET_KEY:-change-me}
-      CORS_ORIGINS: ${UI_BASE_URL:-http://localhost:8080}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
       UI_BASE_URL: ${UI_BASE_URL:-http://localhost:8080}
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
       FORWARDED_ALLOW_IPS: "*"

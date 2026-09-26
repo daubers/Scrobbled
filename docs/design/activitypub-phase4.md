@@ -1,11 +1,15 @@
 # ActivityPub phase 4: now playing
 
-**Status: done** on `feature/activitypub` (`7d86bad` … `9883111`). The GoToSocial interop test now covers now playing too: turning it on updates the "Now playing" field GoToSocial has cached for the profile, via the periodic `Update(Person)` push - not just a fresh fetch showing the live truth, which was already covered by the actor route's own tests. As with phases 1-3, a manual pass with a real Mastodon account through a tunnel is still to do before merging.
+**Status: done** on `feature/activitypub` (`7d86bad` … `9883111`, plus a `docker-compose.yml` fix from the manual pass below). The GoToSocial interop test now covers now playing too: turning it on updates the "Now playing" field GoToSocial has cached for the profile, via the periodic `Update(Person)` push - not just a fresh fetch showing the live truth, which was already covered by the actor route's own tests.
+
+The manual pass with a real Mastodon account through a tunnel (the last standing gap after every phase) is also done now, covering phases 1-4 together: WebFinger, actor and follow/unfollow/approve/block against mastodon.social and activitypub.academy over a `cloudflared` tunnel, a forced weekly summary posting and deleting correctly, and the now-playing profile field appearing, clearing, and respecting the 5-minute push throttle.
 
 Where this differed from the plan:
 
 - **The now-playing key had to be hashed, not raw.** `artist\x1ftrack\x1fstarted_at` was going straight into `federation_posts.key` (`VARCHAR(64)`), which real track and artist names routinely overflow. Caught by the first Postgres-backed test that used a real track name, not by anything in the plan itself.
 - **`now_playing_field()` needed its own privacy gate.** It read core's `now_playing` table (populated for every user regardless of federation settings) without checking `now_playing_mode` itself, so a user who'd never turned the feature on at all would still leak what they were listening to if a caller forgot to gate it externally. Found while designing the periodic push task, not by a test written against the plan - the existing tests happened to never combine "something playing" with "mode off". Fixed by moving the gate inside `now_playing_field()` itself, so there's exactly one place that can get this wrong.
+- **`docker-compose.yml` hardcoded the API's `CORS_ORIGINS` to `UI_BASE_URL`.** Found during the manual pass: pointing `UI_BASE_URL` at the tunnel host (needed for federation's own identity) silently changed which browser origins the API accepted, blocking the operator's own `localhost:8080` UI from calling it at all - an `.env` `CORS_ORIGINS` setting had no effect, since the compose file never referenced it. Fixed by making `CORS_ORIGINS` its own variable, defaulting the same as before.
+- **`TestConfig` wasn't isolating `UI_BASE_URL`/`CORS_ORIGINS` either.** The same local `.env` change broke six tests that assert on `http://localhost:8080` URLs, the same way an earlier session found `FEDERATION_ENABLED`/`LASTFM_API_KEY` leaking from a developer's `.env` into the test run. Pinned alongside them.
 
 This implements phase 4 of [activitypub.md](activitypub.md): **now playing**, the last of the "still open" decisions there. It builds on [phase 3](activitypub-phase3.md): publishing, delivery and the web UI for posts.
 

@@ -337,7 +337,7 @@ Everything goes on the existing Prometheus and Grafana setup:
   - visibility addressing
 - **In-process federation**: two Scrobbler instances in one test process following each other.
 - **A real peer in CI**: a [GoToSocial](https://gotosocial.org) container, which is a single binary with SQLite. It follows a Scrobbler user and we assert that it receives the `Accept` and the posts. That's much lighter than running Mastodon in CI.
-- **Manual pass before release**:
+- **Manual pass before release** (done, over a `cloudflared` tunnel - see [phase 4](activitypub-phase4.md)):
   - follow from a real Mastodon account
   - check the profile, posts, profile-field updates and unfollowing
   - check with [verify.funfedi.dev](https://verify.funfedi.dev/) or the [ActivityPub Academy](https://activitypub.academy/)

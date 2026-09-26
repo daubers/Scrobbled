@@ -1,6 +1,6 @@
 # ActivityPub phase 2: followers
 
-**Status: done** on `feature/activitypub` (`a6d3fb6` … `fe95f59`). The GoToSocial interop test passes locally and in CI. Before merging, the plan still calls for a manual pass with a real Mastodon account through a tunnel.
+**Status: done** on `feature/activitypub` (`a6d3fb6` … `fe95f59`). The GoToSocial interop test passes locally and in CI. The manual pass with a real Mastodon account through a tunnel is also done: follow, unfollow, manual approval, and block/unblock all worked correctly.
 
 Where this differed from the plan:
 
