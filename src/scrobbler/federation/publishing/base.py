@@ -24,6 +24,17 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+def has_post(user_id: int, kind: str, key: str) -> bool:
+    """Whether a post with this (user, kind, key) already exists (posted or since
+    deleted). Lets a caller skip expensive work — computing stats, say — before deciding
+    whether to call publish() at all."""
+    full_key = f"{kind}:{key}"
+    return (
+        db.session.scalar(db.select(FederationPost.id).filter_by(user_id=user_id, key=full_key))
+        is not None
+    )
+
+
 def publish(
     user_id: int,
     username: str,

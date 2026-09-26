@@ -76,8 +76,20 @@ def test_shared_user_is_case_insensitive_and_requires_sharing(fed_ctx, user, mak
 
 
 @pytest.mark.parametrize(
-    "changes", [{"visibility": "everyone"}, {"user_id": 99}, {"enabled": True, "handle": "x"}]
+    "changes",
+    [
+        {"visibility": "everyone"},
+        {"user_id": 99},
+        {"enabled": True, "handle": "x"},
+        {"timezone": "Mars/Phobos"},
+        {"timezone": ""},
+    ],
 )
 def test_invalid_changes_are_rejected(fed_ctx, user, changes):
     with pytest.raises(ValueError):
         sharing.update(user.id, changes)
+
+
+def test_a_valid_timezone_can_be_set(fed_ctx, user):
+    settings, _ = sharing.update(user.id, {"timezone": "Pacific/Auckland"})
+    assert settings.timezone == "Pacific/Auckland"

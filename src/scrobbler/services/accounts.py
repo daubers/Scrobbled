@@ -40,6 +40,10 @@ def find_user(username: str) -> User | None:
     return db.session.scalar(db.select(User).where(func.lower(User.username) == username.lower()))
 
 
+def get_user(user_id: int) -> User | None:
+    return db.session.get(User, user_id)
+
+
 def register(username: str, email: str, password: str) -> User:
     if not USERNAME_RE.match(username):
         raise AccountError(
