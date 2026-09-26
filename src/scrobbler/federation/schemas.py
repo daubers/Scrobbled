@@ -1,6 +1,6 @@
 from marshmallow import Schema, ValidationError, fields, validate
 
-from scrobbler.federation.models import VISIBILITIES
+from scrobbler.federation.models import NOW_PLAYING_MODES, VISIBILITIES
 from scrobbler.federation.protocol.schedule import is_valid_timezone
 
 
@@ -43,6 +43,17 @@ class SharingSettingsSchema(Schema):
         metadata={
             "description": "Post scrobble-count, artist-plays and top-10 milestones as you hit them"
         }
+    )
+    now_playing_mode = fields.String(
+        validate=validate.OneOf(NOW_PLAYING_MODES),
+        metadata={
+            "description": (
+                '`off` (default): nothing. `profile`: a "Now playing" field on your '
+                "profile, refreshed at most every 5 minutes and cleared when you stop. "
+                "`posts`: the profile field, plus a post for each track played 30+ "
+                "seconds, at most one every 30 minutes, replacing the last one."
+            )
+        },
     )
     handle = fields.String(dump_only=True, metadata={"example": "@alice@scrobble.example"})
     actor_url = fields.String(dump_only=True)
@@ -89,7 +100,7 @@ class BlockSchema(Schema):
 
 class PostSchema(Schema):
     id = fields.Integer()
-    kind = fields.String(metadata={"description": "weekly or milestone"})
+    kind = fields.String(metadata={"description": "weekly, milestone or now_playing"})
     text = fields.String()
     visibility = fields.String()
     created_at = fields.DateTime()

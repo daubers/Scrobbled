@@ -56,6 +56,27 @@ def test_an_unknown_timezone_is_rejected(fed_client, fed_auth):
     assert response.status_code == 422
 
 
+def test_now_playing_mode_defaults_to_off(fed_client, fed_auth):
+    body = fed_client.get("/api/v1/federation/settings", headers=fed_auth).get_json()
+    assert body["now_playing_mode"] == "off"
+
+
+@pytest.mark.parametrize("mode", ["off", "profile", "posts"])
+def test_now_playing_mode_can_be_changed(fed_client, fed_auth, mode):
+    response = fed_client.patch(
+        "/api/v1/federation/settings", json={"now_playing_mode": mode}, headers=fed_auth
+    )
+    assert response.status_code == 200
+    assert response.get_json()["now_playing_mode"] == mode
+
+
+def test_an_unknown_now_playing_mode_is_rejected(fed_client, fed_auth):
+    response = fed_client.patch(
+        "/api/v1/federation/settings", json={"now_playing_mode": "always"}, headers=fed_auth
+    )
+    assert response.status_code == 422
+
+
 def test_enable_and_change_settings(fed_client, fed_auth, metric_delta):
     enabled = metric_delta("scrobbler_federation_sharing_changes_total", change="enabled")
     response = fed_client.patch(
