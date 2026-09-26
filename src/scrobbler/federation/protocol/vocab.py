@@ -138,8 +138,12 @@ def application(
     }
 
 
-def ordered_collection(collection_id: str, total: int, items: list | None = None) -> dict:
-    """A collection. With items=None only the count is published (e.g. followers)."""
+def ordered_collection(
+    collection_id: str, total: int, items: list | None = None, first: str | None = None
+) -> dict:
+    """A collection. With items=None only the count is published (e.g. followers). With
+    `first`, the collection just points at its first page rather than listing items
+    itself (e.g. the outbox, paged by ordered_collection_page)."""
     doc = {
         "@context": AS_CONTEXT,
         "id": collection_id,
@@ -148,6 +152,30 @@ def ordered_collection(collection_id: str, total: int, items: list | None = None
     }
     if items is not None:
         doc["orderedItems"] = items
+    if first:
+        doc["first"] = first
+    return doc
+
+
+def ordered_collection_page(
+    page_id: str,
+    *,
+    part_of: str,
+    items: list,
+    next_page: str | None = None,
+    prev_page: str | None = None,
+) -> dict:
+    doc = {
+        "@context": AS_CONTEXT,
+        "id": page_id,
+        "type": "OrderedCollectionPage",
+        "partOf": part_of,
+        "orderedItems": items,
+    }
+    if next_page:
+        doc["next"] = next_page
+    if prev_page:
+        doc["prev"] = prev_page
     return doc
 
 
@@ -190,6 +218,67 @@ def undo(activity_id: str, actor_id: str, undone: dict) -> dict:
         "actor": actor_id,
         "object": undone,
         "to": list(to),
+    }
+
+
+def hashtag(name: str) -> dict:
+    """A Hashtag tag, e.g. #Scrobbler. No href: we don't serve tag pages, and Mastodon
+    still recognises and indexes the tag from `name` alone."""
+    return {"type": "Hashtag", "name": f"#{name}"}
+
+
+def note(
+    note_id: str,
+    *,
+    actor_id: str,
+    content_html: str,
+    published: str,
+    url: str,
+    to: list[str],
+    cc: list[str],
+    tags: list[str] = (),
+) -> dict:
+    """A post (weekly summary or milestone). No `@context`: it's always embedded in the
+    Create that carries the same addressing, as Mastodon does."""
+    return {
+        "id": note_id,
+        "type": "Note",
+        "attributedTo": actor_id,
+        "content": content_html,
+        "contentMap": {"en": content_html},
+        "published": published,
+        "url": url,
+        "to": list(to),
+        "cc": list(cc),
+        "tag": [hashtag(t) for t in tags],
+        "sensitive": False,
+    }
+
+
+def create(activity_id: str, actor_id: str, obj: dict, *, to: list[str], cc: list[str]) -> dict:
+    """Wraps a Note (or other object) for publishing, with the same addressing."""
+    return {
+        "@context": AS_CONTEXT,
+        "id": activity_id,
+        "type": "Create",
+        "actor": actor_id,
+        "object": obj,
+        "published": obj.get("published"),
+        "to": list(to),
+        "cc": list(cc),
+    }
+
+
+def delete(activity_id: str, actor_id: str, note_id: str, *, to: list[str], cc: list[str]) -> dict:
+    """Withdraws one of our Notes, as a Tombstone (the shape Mastodon sends)."""
+    return {
+        "@context": AS_CONTEXT,
+        "id": activity_id,
+        "type": "Delete",
+        "actor": actor_id,
+        "object": {"id": note_id, "type": "Tombstone"},
+        "to": list(to),
+        "cc": list(cc),
     }
 
 

@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from scrobbler.federation.protocol import hostmeta, media, nodeinfo, vocab, webfinger
+from scrobbler.federation.protocol import addressing, hostmeta, media, nodeinfo, vocab, webfinger
 
 BASE = "https://scrobble.test"
 
@@ -115,6 +115,98 @@ def test_collections():
         "totalItems": 3,
     }
     assert vocab.ordered_collection("x", 0, items=[])["orderedItems"] == []
+    assert vocab.ordered_collection("x", 5, first="x?page=1")["first"] == "x?page=1"
+    assert "orderedItems" not in vocab.ordered_collection("x", 5, first="x?page=1")
+
+
+def test_ordered_collection_page():
+    page = vocab.ordered_collection_page(
+        f"{BASE}/users/alice/outbox?page=2",
+        part_of=f"{BASE}/users/alice/outbox",
+        items=["a", "b"],
+        next_page=f"{BASE}/users/alice/outbox?page=3",
+    )
+    assert page["type"] == "OrderedCollectionPage"
+    assert page["partOf"] == f"{BASE}/users/alice/outbox"
+    assert page["orderedItems"] == ["a", "b"]
+    assert page["next"] == f"{BASE}/users/alice/outbox?page=3"
+    assert "prev" not in page
+
+    with_prev = vocab.ordered_collection_page("x", part_of="y", items=[], prev_page="z")
+    assert with_prev["prev"] == "z" and "next" not in with_prev
+
+
+@pytest.mark.parametrize(
+    ("visibility", "to", "cc"),
+    [
+        ("followers", ["FOLLOWERS"], []),
+        ("unlisted", ["FOLLOWERS"], [vocab.PUBLIC]),
+        ("public", [vocab.PUBLIC], ["FOLLOWERS"]),
+    ],
+)
+def test_addressing(visibility, to, cc):
+    assert addressing.address(visibility, "FOLLOWERS") == (to, cc)
+
+
+def test_addressing_rejects_unknown_visibility():
+    with pytest.raises(ValueError, match="visibility"):
+        addressing.address("everyone", "FOLLOWERS")
+
+
+def test_is_public_or_unlisted():
+    assert addressing.is_public_or_unlisted("public") is True
+    assert addressing.is_public_or_unlisted("unlisted") is True
+    assert addressing.is_public_or_unlisted("followers") is False
+
+
+def test_hashtag():
+    assert vocab.hashtag("Scrobbler") == {"type": "Hashtag", "name": "#Scrobbler"}
+
+
+def test_note():
+    doc = vocab.note(
+        f"{BASE}/users/alice/posts/1",
+        actor_id=f"{BASE}/users/alice",
+        content_html="<p>Hello</p>",
+        published="2026-01-05T09:00:00Z",
+        url=f"{BASE}/post.html?id=1",
+        to=["FOLLOWERS"],
+        cc=[],
+        tags=["Scrobbler"],
+    )
+    assert doc["type"] == "Note"
+    assert doc["attributedTo"] == f"{BASE}/users/alice"
+    assert doc["content"] == "<p>Hello</p>"
+    assert doc["contentMap"] == {"en": "<p>Hello</p>"}
+    assert (doc["to"], doc["cc"]) == (["FOLLOWERS"], [])
+    assert doc["tag"] == [{"type": "Hashtag", "name": "#Scrobbler"}]
+    assert doc["sensitive"] is False
+    assert "@context" not in doc  # carried by the wrapping Create instead
+
+
+def test_create_wraps_a_note_with_the_same_addressing():
+    inner = vocab.note(
+        "note-id",
+        actor_id="actor",
+        content_html="<p>x</p>",
+        published="2026-01-05T00:00:00Z",
+        url="url",
+        to=["FOLLOWERS"],
+        cc=["PUBLIC"],
+    )
+    doc = vocab.create("activity-id", "actor", inner, to=["FOLLOWERS"], cc=["PUBLIC"])
+    assert (doc["type"], doc["id"], doc["actor"]) == ("Create", "activity-id", "actor")
+    assert doc["object"] == inner
+    assert (doc["to"], doc["cc"]) == (["FOLLOWERS"], ["PUBLIC"])
+    assert doc["published"] == "2026-01-05T00:00:00Z"
+    assert doc["@context"] == vocab.AS_CONTEXT
+
+
+def test_delete_is_a_tombstone():
+    doc = vocab.delete("activity-id", "actor", "note-id", to=["FOLLOWERS"], cc=["PUBLIC"])
+    assert doc["type"] == "Delete"
+    assert doc["object"] == {"id": "note-id", "type": "Tombstone"}
+    assert (doc["to"], doc["cc"]) == (["FOLLOWERS"], ["PUBLIC"])
 
 
 def test_nodeinfo():
