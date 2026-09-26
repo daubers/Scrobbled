@@ -65,6 +65,7 @@ Every ActivityPub ID is built from `FEDERATION_BASE_URL`, never from the incomin
 | `openapi.py` | OpenAPI descriptions of `web.py`'s endpoints |
 | `metrics.py` | Federation's own Prometheus metrics |
 | `cli.py` | `flask federation ...` admin commands |
+| `actors.py` | Builds a user's actor document body; shared by the live `GET /users/<u>` route and the now-playing `Update(Person)` push, so both render the same shape |
 | `publishing/` | Posts: shared publish/delete machinery, and one module per kind (see below) |
 
 ## Publishing
@@ -88,30 +89,41 @@ the text says, then calls into `base.py`:
   every threshold already passed without posting, called when a user turns sharing on
   and after an import finishes, so old history never produces a burst of "milestone"
   posts.
+- `publishing/now_playing.py`: not quite the same shape as the other two, since it
+  covers two things at once - a throttled `Update(Person)` push for the profile field
+  (`actors.py` owns the live version shown on a plain `GET`) and, opt-in, a post per
+  track played 30+ seconds. Both are driven by one periodic scan
+  (`federation.now_playing`, every 30 seconds) rather than an event receiver: the
+  throttle windows (5 and 30 minutes) are far longer than the poll interval, and there's
+  no history to react to retroactively the way milestones does.
 
-Adding a third kind (e.g. now playing) means adding another module here with the same
-shape — decide when, build the text, call `publishing.publish()` — not touching
-`base.py`.
+Adding a fourth kind means adding another module here with the same shape as
+`weekly.py`/`milestones.py` - decide when, build the text, call `publishing.publish()`
+- not touching `base.py`.
 
 ## Worker tasks
 
 `federation.inbox` (process received activities), `federation.deliver` (send queued
 ones), `federation.inbox.maintenance` (re-queue stalled, prune after 30 days),
 `federation.gauges` (queue and follower gauges), `federation.milestones` (drain pending
-milestone checks) and `federation.weekly` (check every sharing user for a due weekly
-summary, every 15 minutes). All are registered only when federation is on.
+milestone checks), `federation.weekly` (check every sharing user for a due weekly
+summary, every 15 minutes) and `federation.now_playing` (push profile updates and posts
+for users with it on, every 30 seconds). All are registered only when federation is on.
 
 ## Interop
 
 `scripts/interop/run.sh` runs Scrobbler against a real GoToSocial server on a private
 `.test` network. `scripts/interop/gotosocial_interop.py` checks the whole follow life
-cycle, then `run.sh` seeds a scrobble, runs `flask federation post-weekly --now` directly
-in the `api` container, and runs the driver a second time (`--check-posts`) to confirm
-the post reaches GoToSocial's home timeline with the right content and `private`
-(followers-only) visibility, and disappears from it once deleted. CI runs the whole
-thing on every push. GoToSocial 0.22.1 ignores a Reject of an already-accepted follow (a
-TODO in its code, fixed on its main branch), so that one check on its side is skipped
-until a release includes the fix.
+cycle, then `run.sh` seeds a scrobble and a now-playing track, runs
+`flask federation post-weekly --now` directly in the `api` container, and runs the
+driver a second time (`--check-posts`) to confirm: the post reaches GoToSocial's home
+timeline with the right content and `private` (followers-only) visibility and
+disappears from it once deleted; and, with now playing turned on, GoToSocial's own
+stored copy of the account (not a fresh `resolve()` fetch) picks up a "Now playing"
+field from the periodic `Update(Person)` push. CI runs the whole thing on every push.
+GoToSocial 0.22.1 ignores a Reject of an already-accepted follow (a TODO in its code,
+fixed on its main branch), so that one check on its side is skipped until a release
+includes the fix.
 
 ## Migrations
 

@@ -104,9 +104,15 @@ Once someone follows, the **Sharing** page's **What to post** section controls w
 - **Weekly summary**: play count and top artist(s), posted once a week (Monday 09:00 in the user's own time zone, for the Monday–Sunday week that just ended). A live preview on the same page shows what it would say so far.
 - **Milestones**: total scrobbles, an artist's plays, and a new entry into the all-time top 10 — each posted once, the first time it's reached. History already on file when sharing is turned on, or added by an import, is never posted about retroactively.
 
-Both are on by default and can be switched off independently. Posts use the same visibility as the profile (followers only by default, or unlisted/public); the **Posts** page lists a user's own posts with delete (sends a `Delete` to whoever received it). "Now playing" isn't posted yet; see `docs/design/activitypub.md`.
+Both are on by default and can be switched off independently. Posts use the same visibility as the profile (followers only by default, or unlisted/public); the **Posts** page lists a user's own posts with delete (sends a `Delete` to whoever received it).
 
-Federation is tested in CI against a real GoToSocial server (`scripts/interop/run.sh`), including that a posted weekly summary reaches a follower's timeline with the right content and visibility, and disappears from it when deleted.
+The Sharing page's **Now playing** section is a separate, three-way choice:
+
+- **Off** (default): nothing shown or posted.
+- **Show on my profile**: a "Now playing: *Track* by Artist" field on the profile, refreshed at most every 5 minutes while something's playing and cleared a few minutes after it stops. A `GET` of the profile always shows the truth right now; the push is just so already-following servers don't have to ask.
+- **Show on my profile and post**: the profile field, plus a post for each track played 30 seconds or more, at most one every 30 minutes, with the previous now-playing post deleted once the new one is confirmed published.
+
+Federation is tested in CI against a real GoToSocial server (`scripts/interop/run.sh`), including that a posted weekly summary reaches a follower's timeline with the right content and visibility and disappears from it when deleted, and that turning now playing on updates the field GoToSocial has cached for the profile.
 
 It's **off unless the server enables it**, and then **off for each user** until they switch it on under **Sharing**. To enable it:
 

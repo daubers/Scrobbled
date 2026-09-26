@@ -1,5 +1,12 @@
 # ActivityPub phase 4: now playing
 
+**Status: done** on `feature/activitypub` (`7d86bad` … `9883111`). The GoToSocial interop test now covers now playing too: turning it on updates the "Now playing" field GoToSocial has cached for the profile, via the periodic `Update(Person)` push - not just a fresh fetch showing the live truth, which was already covered by the actor route's own tests. As with phases 1-3, a manual pass with a real Mastodon account through a tunnel is still to do before merging.
+
+Where this differed from the plan:
+
+- **The now-playing key had to be hashed, not raw.** `artist\x1ftrack\x1fstarted_at` was going straight into `federation_posts.key` (`VARCHAR(64)`), which real track and artist names routinely overflow. Caught by the first Postgres-backed test that used a real track name, not by anything in the plan itself.
+- **`now_playing_field()` needed its own privacy gate.** It read core's `now_playing` table (populated for every user regardless of federation settings) without checking `now_playing_mode` itself, so a user who'd never turned the feature on at all would still leak what they were listening to if a caller forgot to gate it externally. Found while designing the periodic push task, not by a test written against the plan - the existing tests happened to never combine "something playing" with "mode off". Fixed by moving the gate inside `now_playing_field()` itself, so there's exactly one place that can get this wrong.
+
 This implements phase 4 of [activitypub.md](activitypub.md): **now playing**, the last of the "still open" decisions there. It builds on [phase 3](activitypub-phase3.md): publishing, delivery and the web UI for posts.
 
 Chosen (of the doc's three options): **profile field, plus opt-in posts** — the profile field is what a user gets as soon as they turn now playing on at all; posts are a further, separate opt-in on top of that, matching the doc's own "profile field mode, then optional posts" framing.
