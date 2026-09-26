@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 KIND = "milestone"
 
 SCROBBLE_THRESHOLDS = [1000, 5000, 10000, *range(25000, 500_000, 25000)]
-ARTIST_THRESHOLDS = [100, 500, 1000, 2500, 5000]
+ARTIST_THRESHOLDS = [100, 500, 1000]
 TOP_N = 10
 # A top-10 entry and an artist-plays threshold are only ever checked against a user's
 # current top ARTIST_SCAN artists: crossing 100+ plays for one artist keeps it well
