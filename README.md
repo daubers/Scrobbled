@@ -15,12 +15,12 @@ Prometheus ◄── API :9100/metrics, postgres-exporter ──► Grafana
 
 ## Docs
 
-- **[Deploy](docs/deploy.md)** — running a real instance: images, configuration, TLS,
-  monitoring, backups, releases.
+- **[Admin guide](docs/admin-guide.md)** — running a real instance: images,
+  configuration, TLS, monitoring, backups, upgrades, troubleshooting.
+- **[User guide](docs/user-guide.md)** — accounts and apps, connecting a player,
+  importing history, sharing on the fediverse.
 - **[Set up](docs/setup.md)** — working on the code: local dev environment, migrations,
   tests, CI/CD.
-- **[Use](docs/usage.md)** — accounts and apps, connecting a player, importing history,
-  sharing on the fediverse.
 - **API reference**: `/api/openapi.json`, Swagger UI at `/api/docs`, ReDoc at
   `/api/redoc` (a copy is committed at `docs/openapi.json`).
 - **Federation internals**: `src/scrobbler/federation/README.md`. Design docs for how it
@@ -34,7 +34,7 @@ docker compose up -d                      # db, api (:5050), worker, ui (:8080)
 ```
 
 Open http://localhost:8080, create an account, then go to **Apps** and create an app for
-a player. See [docs/deploy.md](docs/deploy.md) for the published images, full
+a player. See [docs/admin-guide.md](docs/admin-guide.md) for the published images, full
 configuration reference and production notes.
 
 ## Licence

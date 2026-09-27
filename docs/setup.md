@@ -1,7 +1,8 @@
 # Working on Scrobbler
 
-Setting up a local development environment. For running a real instance, see
-[deploy.md](deploy.md). For what the service does, see [usage.md](usage.md).
+Setting up a local development environment. For running a real instance, see the
+[admin guide](admin-guide.md). For what the service does, see the
+[user guide](user-guide.md).
 
 ## Prerequisites
 
@@ -88,7 +89,7 @@ Everything runs from `.gitea/workflows/ci.yml`:
 - **Every push and PR**: lint, the migrations-vs-models check, tests against Postgres,
   and `promtool` checks of the Prometheus config and alert rules.
 - **Pushes to `main` and tags**, once those all pass: images and assets publish (see
-  [deploy.md](deploy.md#releases)).
+  [admin guide](admin-guide.md#releases)).
 - **Every run** posts to the `ScrobblingService` topic on notify.daubney.dev.
 
 Repository secrets: `PKGS_USER`, `PKGS_PASSWORD`, `PKGS_API_KEY`, `NTFY_USER`,
