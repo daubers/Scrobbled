@@ -190,14 +190,16 @@ def test_public_post_404s_for_followers_only_deleted_or_unknown(fed_client, fed_
 
 
 def test_preview_weekly_reflects_the_week_in_progress(fed_client, fed_auth, fed_ctx, user):
+    # The preview window is [this week's Monday 00:00, now) - a play has to be in the
+    # past relative to the moment the test runs, not just dated "this Monday", or this
+    # flakes whenever CI happens to run before noon UTC on a Monday.
     now = datetime.now(UTC)
-    monday = now.date() - timedelta(days=now.weekday())
     db.session.add(
         Scrobble(
             user_id=user.id,
             artist="Radiohead",
             track="Reckoner",
-            played_at=datetime(monday.year, monday.month, monday.day, 12, tzinfo=UTC),
+            played_at=now - timedelta(minutes=1),
         )
     )
     db.session.commit()
