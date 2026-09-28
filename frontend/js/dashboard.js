@@ -199,11 +199,13 @@ function renderPeriodSelector() {
 }
 
 async function loadTop(period) {
-  const [artists, tracks] = await Promise.all([
+  const [artists, albums, tracks] = await Promise.all([
     api(`/me/top/artists?period=${period}&limit=10`),
+    api(`/me/top/albums?period=${period}&limit=10`),
     api(`/me/top/tracks?period=${period}&limit=10`),
   ]);
   renderRanking(document.getElementById("top-artists"), artists.items, false);
+  renderRanking(document.getElementById("top-albums"), albums.items, true);
   renderRanking(document.getElementById("top-tracks"), tracks.items, true);
 }
 
