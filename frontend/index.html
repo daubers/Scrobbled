@@ -14,6 +14,14 @@
     <main id="main">
     <h1 class="visually-hidden">Overview</h1>
     <div id="panel" class="panel" aria-live="polite"></div>
+    <section aria-labelledby="song-search-title" class="song-search">
+      <h2 id="song-search-title" class="visually-hidden">Find a song</h2>
+      <div class="field">
+        <label for="song-search">Find a song</label>
+        <input id="song-search" type="search" autocomplete="off" placeholder="Search your scrobbles…">
+      </div>
+      <ul class="search-results" id="song-search-results" hidden></ul>
+    </section>
     <section aria-labelledby="charts-title">
       <div class="section-head">
         <h2 id="charts-title">Most played</h2>

@@ -4,7 +4,7 @@ import math
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
-from sqlalchemy import Select, func, literal_column, select
+from sqlalchemy import Select, func, literal_column, or_, select
 
 from scrobbler.extensions import db
 from scrobbler.models import Scrobble, User
@@ -67,6 +67,16 @@ def _display(column):
     return func.mode().within_group(column.collate("C"))
 
 
+def _mode_text(column):
+    """Most common non-null spelling in the group, ignoring rows where it's unset."""
+    return func.mode().within_group(column.collate("C")).filter(column.is_not(None))
+
+
+def _mode(column):
+    """Most common non-null value in the group, ignoring rows where it's unset."""
+    return func.mode().within_group(column).filter(column.is_not(None))
+
+
 def _paginate(query: Select, page: int, per_page: int) -> tuple[list, int]:
     total = db.session.scalar(select(func.count()).select_from(query.subquery()))
     rows = db.session.execute(query.limit(per_page).offset((page - 1) * per_page)).all()
@@ -79,12 +89,18 @@ def recent(
     per_page: int = 50,
     start: datetime | None = None,
     end: datetime | None = None,
+    artist: str | None = None,
+    track: str | None = None,
 ) -> Page:
     conditions = [Scrobble.user_id == user.id]
     if start:
         conditions.append(Scrobble.played_at >= start)
     if end:
         conditions.append(Scrobble.played_at <= end)
+    if artist:
+        conditions.append(func.lower(Scrobble.artist) == artist.lower())
+    if track:
+        conditions.append(func.lower(Scrobble.track) == track.lower())
     query = select(Scrobble).where(*conditions).order_by(Scrobble.played_at.desc())
     rows, total = _paginate(query, page, per_page)
     return Page([row[0] for row in rows], page, per_page, total)
@@ -214,6 +230,84 @@ def top_tracks_between(
     return [
         TopItem(i + 1, name, count, artist=artist, duration=duration)
         for i, (name, artist, duration, count) in enumerate(rows)
+    ]
+
+
+@dataclass
+class TrackMetadata:
+    artist: str
+    track: str
+    album: str | None
+    album_artist: str | None
+    track_number: int | None
+    duration: int | None
+    mbid: str | None
+    playcount: int
+    first_played_at: datetime
+    last_played_at: datetime
+
+
+def track_metadata(user: User, artist: str, track: str) -> TrackMetadata | None:
+    """Canonical name and aggregated metadata for one song, or None if never played.
+
+    Each metadata field is the most common non-null value recorded for it; an exact tie
+    is resolved by mode()'s own (unspecified) ordering rather than a hand-rolled tiebreak.
+    """
+    row = db.session.execute(
+        select(
+            _display(Scrobble.artist),
+            _display(Scrobble.track),
+            _mode_text(Scrobble.album),
+            _mode_text(Scrobble.album_artist),
+            _mode(Scrobble.track_number),
+            _mode(Scrobble.duration),
+            _mode_text(Scrobble.mbid),
+            func.count(),
+            func.min(Scrobble.played_at),
+            func.max(Scrobble.played_at),
+        ).where(
+            Scrobble.user_id == user.id,
+            func.lower(Scrobble.artist) == artist.lower(),
+            func.lower(Scrobble.track) == track.lower(),
+        )
+    ).one()
+    playcount = row[7]
+    if not playcount:
+        return None
+    return TrackMetadata(
+        artist=row[0],
+        track=row[1],
+        album=row[2],
+        album_artist=row[3],
+        track_number=row[4],
+        duration=row[5],
+        mbid=row[6],
+        playcount=playcount,
+        first_played_at=row[8],
+        last_played_at=row[9],
+    )
+
+
+def track_search(user: User, q: str, limit: int = 20) -> list[TopItem]:
+    """Tracks whose name or artist contains q (case-insensitive), ranked by playcount."""
+    q = q.strip().lower()
+    if not q:
+        return []
+    keys = (func.lower(Scrobble.track), func.lower(Scrobble.artist))
+    plays = func.count().label("plays")
+    query = (
+        select(_display(Scrobble.track), _display(Scrobble.artist), plays)
+        .where(
+            Scrobble.user_id == user.id,
+            or_(func.lower(Scrobble.track).contains(q), func.lower(Scrobble.artist).contains(q)),
+        )
+        .group_by(*keys)
+        .order_by(plays.desc(), *keys)
+        .limit(limit)
+    )
+    rows = db.session.execute(query).all()
+    return [
+        TopItem(i + 1, name, count, artist=artist) for i, (name, artist, count) in enumerate(rows)
     ]
 
 
