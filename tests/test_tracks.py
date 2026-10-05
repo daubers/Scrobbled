@@ -71,9 +71,7 @@ def test_search_requires_a_query(client, auth):
 
 
 def test_detail_aggregates_metadata_and_merges_capitalisation(client, auth, history):
-    body = client.get(
-        "/api/v1/me/tracks?artist=radiohead&track=RECKONER", headers=auth
-    ).get_json()
+    body = client.get("/api/v1/me/tracks?artist=radiohead&track=RECKONER", headers=auth).get_json()
     assert body["artist"] == "Radiohead"
     assert body["track"] == "Reckoner"
     metadata = body["metadata"]
