@@ -1,10 +1,10 @@
 import { api } from "./api.js";
 import { errorBox, formatDate, formatDay, formatDuration, formatTime, h, num, replace } from "./dom.js";
 import { signedInPage } from "./layout.js";
+import { spectrum } from "./spectrum.js";
 
 const PER_PAGE = 50;
-const title = document.getElementById("song-title");
-const subtitle = document.getElementById("song-subtitle");
+const panel = document.getElementById("panel");
 const meta = document.getElementById("song-meta");
 const history = document.getElementById("song-history");
 const pager = document.getElementById("pager");
@@ -17,7 +17,7 @@ const track = params.get("track") ?? "";
 const page = Math.max(1, Number.parseInt(params.get("page"), 10) || 1);
 
 if (!artist || !track) {
-  replace(history, h("p", { class: "notice" }, "Use the search box on the dashboard to find a song."));
+  replace(panel, h("p", { class: "notice" }, "Use the search box on the dashboard to find a song."));
 } else {
   try {
     const result = await api(
@@ -25,12 +25,10 @@ if (!artist || !track) {
     );
     render(result);
   } catch (error) {
-    title.textContent = track;
-    subtitle.textContent = `by ${artist}`;
     replace(
-      history,
+      panel,
       error.status === 404
-        ? h("p", { class: "notice" }, "You've never scrobbled this song.")
+        ? h("p", { class: "notice" }, `You've never scrobbled "${track}" by ${artist}.`)
         : errorBox(error.message),
     );
   }
@@ -38,18 +36,26 @@ if (!artist || !track) {
 
 function render(result) {
   document.title = `${result.track} · Scrobbler`;
-  title.textContent = result.track;
-  subtitle.textContent = `by ${result.artist}`;
-
   const m = result.metadata;
+
+  const display = h(
+    "div",
+    { class: "display" },
+    h("p", { class: "display-status" }, "Now viewing"),
+    h("p", { class: "display-track" }, result.track),
+    h(
+      "p",
+      { class: "display-meta" },
+      h("strong", {}, result.artist),
+      m.album ? [" from ", h("strong", {}, m.album)] : null,
+    ),
+  );
+  replace(panel, display, readouts(m), spectrum(result.counts, `Plays of ${result.track}`, "90 days"));
+
   const row = (label, value) =>
     value === null || value === undefined ? null : h("div", {}, h("dt", {}, label), h("dd", {}, value));
   replace(
     meta,
-    row("Plays", num(m.playcount)),
-    row("First played", formatDate(m.first_played_at)),
-    row("Last played", formatDate(m.last_played_at)),
-    row("Album", m.album),
     row("Album artist", m.album_artist),
     row("Track number", m.track_number),
     row("Duration", m.duration ? formatDuration(m.duration) : null),
@@ -93,5 +99,16 @@ function render(result) {
     result.page < result.total_pages
       ? h("a", { class: "button button-quiet", href: link(result.page + 1) }, "Older")
       : h("span"),
+  );
+}
+
+function readouts(m) {
+  const item = (value, label) => h("div", {}, h("dt", {}, label), h("dd", {}, value));
+  return h(
+    "dl",
+    { class: "readouts" },
+    item(num(m.playcount), "plays"),
+    item(formatDate(m.first_played_at), "first played"),
+    item(formatDate(m.last_played_at), "last played"),
   );
 }

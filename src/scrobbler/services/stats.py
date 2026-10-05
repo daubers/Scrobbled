@@ -163,14 +163,25 @@ def top_tracks(user: User, period: str = "overall", page: int = 1, per_page: int
     return Page(items, page, per_page, total)
 
 
-def listen_counts(user: User, period: str = "1month", bucket: str = "day") -> list[dict]:
+def listen_counts(
+    user: User,
+    period: str = "1month",
+    bucket: str = "day",
+    artist: str | None = None,
+    track: str | None = None,
+) -> list[dict]:
     """Scrobbles per bucket (UTC). Empty buckets are included for day buckets."""
     if bucket not in BUCKETS:  # interpolated into SQL below, so allow-list it
         raise ValueError(f"bucket must be one of {BUCKETS}")
+    conditions = _user_scrobbles(user, period)
+    if artist:
+        conditions.append(func.lower(Scrobble.artist) == artist.lower())
+    if track:
+        conditions.append(func.lower(Scrobble.track) == track.lower())
     bucket_col = func.date_trunc(literal_column(f"'{bucket}'"), Scrobble.played_at, "UTC")
     query = (
         select(bucket_col.label("bucket"), func.count())
-        .where(*_user_scrobbles(user, period))
+        .where(*conditions)
         .group_by("bucket")
         .order_by("bucket")
     )

@@ -1,6 +1,7 @@
 import { api } from "./api.js";
-import { errorBox, formatDate, formatDuration, h, num, replace, timeAgo } from "./dom.js";
+import { errorBox, formatDuration, h, num, replace, timeAgo } from "./dom.js";
 import { signedInPage } from "./layout.js";
+import { spectrum } from "./spectrum.js";
 
 const PERIODS = [
   ["7day", "7 days"],
@@ -9,7 +10,6 @@ const PERIODS = [
   ["overall", "All time"],
 ];
 const PERIOD_KEY = "scrobbler.period";
-const SEGMENTS = 10; // lit segments per spectrum column at the busiest day
 const NOW_PLAYING_POLL_MS = 30_000;
 
 const panel = document.getElementById("panel");
@@ -115,55 +115,6 @@ function readouts(summary) {
     item(summary.scrobbles, "scrobbles"),
     item(summary.artists, "artists"),
     item(summary.tracks, "tracks"),
-  );
-}
-
-// Daily plays for the last 30 days, drawn as a segmented level meter.
-function spectrum(counts) {
-  const NS = "http://www.w3.org/2000/svg";
-  const width = 1000;
-  const height = 96;
-  const gap = 4;
-  const max = Math.max(1, ...counts.map((c) => c.count));
-  const columnWidth = width / counts.length;
-  const segmentHeight = height / SEGMENTS;
-  const total = counts.reduce((sum, c) => sum + c.count, 0);
-
-  const svg = document.createElementNS(NS, "svg");
-  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  svg.setAttribute("preserveAspectRatio", "none");
-  svg.setAttribute("role", "img");
-  svg.setAttribute("aria-label", `Plays per day over the last ${counts.length} days: ${num(total)} in total`);
-
-  counts.forEach((day, i) => {
-    const lit = day.count ? Math.max(1, Math.round((day.count / max) * SEGMENTS)) : 0;
-    const group = document.createElementNS(NS, "g");
-    const title = document.createElementNS(NS, "title");
-    title.textContent = `${formatDate(day.start)}: ${num(day.count)} ${day.count === 1 ? "play" : "plays"}`;
-    group.append(title);
-    for (let s = 0; s < SEGMENTS; s++) {
-      const rect = document.createElementNS(NS, "rect");
-      rect.setAttribute("x", i * columnWidth + gap / 2);
-      rect.setAttribute("y", height - (s + 1) * segmentHeight + 1.5);
-      rect.setAttribute("width", columnWidth - gap);
-      rect.setAttribute("height", segmentHeight - 3);
-      rect.setAttribute("class", s < lit ? "seg-on" : "seg-off");
-      group.append(rect);
-    }
-    svg.append(group);
-  });
-
-  return h(
-    "div",
-    { class: "spectrum" },
-    svg,
-    h(
-      "div",
-      { class: "spectrum-axis" },
-      h("span", {}, formatDate(counts[0].start)),
-      h("span", {}, `${num(total)} plays in 30 days`),
-      h("span", {}, "Today"),
-    ),
   );
 }
 

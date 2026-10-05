@@ -171,6 +171,9 @@ class TrackDetailSchema(PageMetaSchema):
     track = fields.String()
     metadata = fields.Nested(TrackMetadataSchema)
     items = fields.List(fields.Nested(ScrobbleSchema))
+    counts = fields.List(
+        fields.Nested(CountSchema), metadata={"description": "Daily plays over the last 90 days"}
+    )
 
 
 class SummarySchema(Schema):

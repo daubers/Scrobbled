@@ -95,6 +95,16 @@ def test_detail_requires_auth(client):
     assert client.get("/api/v1/me/tracks/search?q=a").status_code == 401
 
 
+def test_detail_counts_are_daily_and_scoped_to_the_track(client, auth, history):
+    body = client.get("/api/v1/me/tracks?artist=Radiohead&track=Reckoner", headers=auth).get_json()
+    counts = body["counts"]
+    assert len(counts) == 91  # 90 days back plus today
+    # Nude (100 days ago, outside the window) and Mallory's Reckoner plays don't count.
+    assert sum(c["count"] for c in counts) == 3
+    assert counts[-1]["start"] == NOW.date().isoformat()
+    assert counts[-1]["count"] == 3
+
+
 def test_detail_pagination(client, auth, history):
     first = client.get(
         "/api/v1/me/tracks?artist=Radiohead&track=Reckoner&limit=2&page=1", headers=auth

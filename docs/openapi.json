@@ -3918,6 +3918,13 @@
             "items": {
               "$ref": "#/components/schemas/Scrobble"
             }
+          },
+          "counts": {
+            "type": "array",
+            "description": "Daily plays over the last 90 days",
+            "items": {
+              "$ref": "#/components/schemas/Count"
+            }
           }
         },
         "additionalProperties": false
