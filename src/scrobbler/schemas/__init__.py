@@ -139,6 +139,40 @@ class CountSchema(Schema):
     count = fields.Integer()
 
 
+class TrackSearchArgsSchema(Schema):
+    q = fields.String(required=True, validate=validate.Length(min=1, max=200))
+    limit = fields.Integer(load_default=20, validate=validate.Range(min=1, max=50))
+
+
+class TrackSearchResultSchema(Schema):
+    artist = fields.String()
+    track = fields.String(attribute="name")
+    playcount = fields.Integer()
+
+
+class TrackDetailArgsSchema(PageArgsSchema):
+    artist = fields.String(required=True, validate=validate.Length(min=1, max=500))
+    track = fields.String(required=True, validate=validate.Length(min=1, max=500))
+
+
+class TrackMetadataSchema(Schema):
+    album = fields.String(allow_none=True)
+    album_artist = fields.String(allow_none=True)
+    track_number = fields.Integer(allow_none=True)
+    duration = fields.Integer(allow_none=True)
+    mbid = fields.String(allow_none=True)
+    playcount = fields.Integer()
+    first_played_at = fields.DateTime()
+    last_played_at = fields.DateTime()
+
+
+class TrackDetailSchema(PageMetaSchema):
+    artist = fields.String()
+    track = fields.String()
+    metadata = fields.Nested(TrackMetadataSchema)
+    items = fields.List(fields.Nested(ScrobbleSchema))
+
+
 class SummarySchema(Schema):
     scrobbles = fields.Integer()
     artists = fields.Integer()
