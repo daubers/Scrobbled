@@ -582,6 +582,16 @@ input {
   background: var(--slate);
 }
 
+.ranking a.name {
+  color: inherit;
+  text-decoration: none;
+}
+
+.ranking a.name:hover,
+.ranking a.name:focus-visible {
+  text-decoration: underline;
+}
+
 /* ---- Listening log -------------------------------------------------------- */
 .log {
   list-style: none;
@@ -976,4 +986,80 @@ input {
 
 .confirm-off .button-row {
   margin-top: 0.75rem;
+}
+
+/* ---- Song lookup ------------------------------------------------------------ */
+.song-search {
+  position: relative;
+  max-width: 28rem;
+  margin-bottom: 1.5rem;
+}
+
+.song-search .field {
+  margin-bottom: 0;
+}
+
+.search-results {
+  position: absolute;
+  z-index: 10;
+  inset-inline: 0;
+  top: 100%;
+  margin: 0.25rem 0 0;
+  padding: 0.35rem;
+  list-style: none;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.search-results li {
+  padding: 0;
+}
+
+.search-results a {
+  display: block;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-control);
+  color: inherit;
+  text-decoration: none;
+}
+
+.search-results a:hover,
+.search-results a:focus-visible {
+  background: var(--panel);
+}
+
+.search-results .by {
+  display: block;
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+
+.search-results .empty {
+  padding: 0.5rem 0.6rem;
+}
+
+.song-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1rem 2rem;
+  margin: 1.25rem 0 2rem;
+}
+
+.song-meta div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.song-meta dt {
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+}
+
+.song-meta dd {
+  margin: 0;
+  font-weight: 600;
 }

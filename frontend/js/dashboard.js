@@ -19,6 +19,7 @@ let progressTimer;
 
 await signedInPage("index.html");
 renderPeriodSelector();
+initSongSearch();
 await Promise.all([loadPanel(), loadTop(currentPeriod()), loadRecent()]).catch(showError);
 setInterval(() => refreshDisplay().catch(() => {}), NOW_PLAYING_POLL_MS);
 
@@ -206,10 +207,10 @@ async function loadTop(period) {
   ]);
   renderRanking(document.getElementById("top-artists"), artists.items, false);
   renderRanking(document.getElementById("top-albums"), albums.items, true);
-  renderRanking(document.getElementById("top-tracks"), tracks.items, true);
+  renderRanking(document.getElementById("top-tracks"), tracks.items, true, true);
 }
 
-function renderRanking(list, items, withArtist) {
+function renderRanking(list, items, withArtist, linkToSong = false) {
   if (!items.length) {
     replace(list, h("li", { class: "empty" }, "No plays in this period."));
     return;
@@ -217,21 +218,81 @@ function renderRanking(list, items, withArtist) {
   const max = items[0].playcount;
   replace(
     list,
-    items.map((item) =>
-      h(
+    items.map((item) => {
+      const by = withArtist ? h("span", { class: "by" }, item.artist) : null;
+      const name = linkToSong
+        ? h("a", { class: "name", href: songHref(item.artist, item.name) }, item.name, by)
+        : h("span", { class: "name" }, item.name, by);
+      return h(
         "li",
         {},
         h("span", { class: "rank" }, item.rank),
-        h("span", { class: "name" }, item.name, withArtist ? h("span", { class: "by" }, item.artist) : null),
+        name,
         h("span", { class: "plays" }, num(item.playcount)),
         h("span", {
           class: "meter",
           "aria-hidden": "true",
           style: `width: calc((100% - 2.75rem) * ${item.playcount / max})`,
         }),
-      ),
-    ),
+      );
+    }),
   );
+}
+
+function songHref(artist, track) {
+  return `song.html?artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}`;
+}
+
+// ---- Song search --------------------------------------------------------------
+
+function initSongSearch() {
+  const input = document.getElementById("song-search");
+  const results = document.getElementById("song-search-results");
+  let debounce;
+  let hideTimer;
+
+  input.addEventListener("input", () => {
+    clearTimeout(debounce);
+    const q = input.value.trim();
+    if (q.length < 2) {
+      results.hidden = true;
+      return;
+    }
+    debounce = setTimeout(() => runSearch(q), 250);
+  });
+  input.addEventListener("focus", () => {
+    if (results.childElementCount) results.hidden = false;
+  });
+  input.addEventListener("blur", () => {
+    hideTimer = setTimeout(() => (results.hidden = true), 150);
+  });
+  // Keep focus on mousedown so the subsequent click still lands on the result.
+  results.addEventListener("mousedown", (event) => event.preventDefault());
+
+  async function runSearch(q) {
+    let matches;
+    try {
+      matches = await api(`/me/tracks/search?q=${encodeURIComponent(q)}&limit=10`);
+    } catch {
+      return; // a flaky search box isn't worth surfacing an error for
+    }
+    clearTimeout(hideTimer);
+    if (!matches.length) {
+      replace(results, h("li", { class: "empty" }, "No matches."));
+    } else {
+      replace(
+        results,
+        matches.map((m) =>
+          h(
+            "li",
+            {},
+            h("a", { href: songHref(m.artist, m.track) }, m.track, h("span", { class: "by" }, m.artist)),
+          ),
+        ),
+      );
+    }
+    results.hidden = false;
+  }
 }
 
 // ---- Recently played ----------------------------------------------------------
