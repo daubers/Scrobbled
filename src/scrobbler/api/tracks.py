@@ -40,11 +40,15 @@ def detail(args):
         artist=args["artist"],
         track=args["track"],
     )
+    counts = stats.listen_counts(
+        g.user, period="3month", bucket="day", artist=args["artist"], track=args["track"]
+    )
     return {
         "artist": metadata.artist,
         "track": metadata.track,
         "metadata": metadata,
         "items": history.items,
+        "counts": counts,
         "page": history.page,
         "per_page": history.per_page,
         "total": history.total,
