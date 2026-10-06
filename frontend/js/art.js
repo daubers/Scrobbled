@@ -20,8 +20,10 @@ export function artThumb(artist, album, extraClass) {
   }
   cache.get(key).then((url) => {
     if (!url) return; // miss or failed fetch: leave the placeholder
+    // Not revoked: the same URL is shared by every thumbnail for this album on the page
+    // (see `cache` above), and this is a full-page-reload site, so the browser releases it
+    // on navigation anyway.
     const img = h("img", { class: classes, alt: "", loading: "lazy" });
-    img.addEventListener("load", () => URL.revokeObjectURL(url), { once: true });
     img.src = url;
     el.replaceWith(img);
   });

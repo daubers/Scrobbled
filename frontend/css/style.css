@@ -1128,6 +1128,7 @@ input {
 .ranking-art .art-thumb {
   width: 2.25rem;
   height: 2.25rem;
+  align-self: center; /* .ranking li aligns its other cells to baseline, which suits text, not art */
 }
 
 .ranking-art .meter {
@@ -1146,4 +1147,5 @@ input {
 .log-art .art-thumb {
   width: 2.25rem;
   height: 2.25rem;
+  align-self: center; /* .log li items default to stretch/start, which suits text, not art */
 }
