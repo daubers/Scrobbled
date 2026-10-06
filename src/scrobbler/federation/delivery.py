@@ -68,6 +68,13 @@ def _retry_or_abandon(delivery: FederationDelivery, error: str, status: int | No
     delivery.last_status, delivery.last_error = status, error[:1000]
     if _now() - delivery.created_at >= GIVE_UP_AFTER:
         delivery.status = "abandoned"
+        log.warning(
+            "delivery %s to %s abandoned after %s attempts: %s",
+            delivery.id,
+            delivery.inbox,
+            delivery.attempts,
+            error[:200],
+        )
         return "abandoned"
     delay = (
         RETRY_DELAYS[delivery.attempts - 1]
@@ -75,6 +82,14 @@ def _retry_or_abandon(delivery: FederationDelivery, error: str, status: int | No
         else LATER_DELAY
     )
     delivery.next_attempt_at = _now() + delay
+    log.warning(
+        "delivery %s to %s failed (attempt %s), retrying in %s: %s",
+        delivery.id,
+        delivery.inbox,
+        delivery.attempts,
+        delay,
+        error[:200],
+    )
     return "retry"
 
 
@@ -135,7 +150,7 @@ def _deliver_in_context(app, delivery_id: int) -> str:
         try:
             return deliver(delivery_id)
         except Exception:
-            log.exception("delivery %s failed unexpectedly", delivery_id)
+            log.exception("delivery %s failed unexpectedly (will be retried)", delivery_id)
             db.session.rollback()
             return "retry"  # the lease expires and it becomes due again
         finally:

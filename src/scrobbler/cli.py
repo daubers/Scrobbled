@@ -8,7 +8,6 @@ from flask.cli import AppGroup, with_appcontext
 def _run_worker(once: bool, poll: float, serve_metrics: bool) -> None:
     from scrobbler import worker
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     if serve_metrics:
         from scrobbler.metrics.server import start_metrics_server
 

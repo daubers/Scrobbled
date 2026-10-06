@@ -20,6 +20,9 @@ class Config:
     CORS_ORIGINS = _csv(os.environ.get("CORS_ORIGINS", "http://localhost:8080"))
     UI_BASE_URL = os.environ.get("UI_BASE_URL", "http://localhost:8080").rstrip("/")
 
+    LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+    LOG_FORMAT = os.environ.get("LOG_FORMAT", "text").lower()  # "text" or "json"
+
     METRICS_PORT = int(os.environ.get("METRICS_PORT", "9100"))
     # Start the metrics HTTP server from create_app (dev server). Under gunicorn the
     # server is started by gunicorn.conf.py instead, so this stays off there.
@@ -92,6 +95,8 @@ class TestConfig(Config):
         "postgresql+psycopg://scrobbler:scrobbler@localhost:5432/scrobbler_test",
     )
     START_METRICS_SERVER = False
+    LOG_LEVEL = "INFO"
+    LOG_FORMAT = "text"
     # Tests never inherit optional features or URLs from a developer's .env or
     # environment; tests that need them turn them on, or override them, explicitly.
     LASTFM_API_KEY = ""

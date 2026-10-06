@@ -602,6 +602,7 @@ def resolve_one_pending() -> bool:
     row.checked_at = datetime.now(UTC)
     db.session.commit()
     metrics.art_worker_resolve_seconds.observe(time.perf_counter() - start)
+    log.info("album art for %r/%r: %s", row.artist, row.album, result.status)
     return True
 
 

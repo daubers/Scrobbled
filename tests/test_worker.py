@@ -89,3 +89,32 @@ def test_worker_cli_lists_and_runs_tasks(app, tasks):
     assert ran == [1]
     alias = app.test_cli_runner().invoke(args=["imports", "worker", "--once", "--no-metrics"])
     assert alias.exit_code == 0, alias.output
+
+
+def test_a_pass_that_did_work_is_logged_with_its_duration(tasks, caplog):
+    tasks.register_task("busy", lambda: True)
+    with caplog.at_level("INFO", logger="scrobbler.worker"):
+        worker.run_once()
+    record = next(r for r in caplog.records if r.__dict__.get("task") == "busy")
+    assert record.levelname == "INFO"
+    assert record.outcome == "worked"
+    assert record.duration_ms >= 0
+
+
+def test_idle_passes_are_only_logged_at_debug(tasks, caplog):
+    tasks.register_task("idle", lambda: False)
+    with caplog.at_level("INFO", logger="scrobbler.worker"):
+        worker.run_once()
+    assert not [r for r in caplog.records if r.__dict__.get("task") == "idle"]
+
+
+def test_failures_log_the_task_name_and_duration(tasks, caplog):
+    def boom():
+        raise RuntimeError("nope")
+
+    tasks.register_task("broken", boom)
+    with caplog.at_level("ERROR", logger="scrobbler.worker"):
+        worker.run_once()
+    record = next(r for r in caplog.records if r.__dict__.get("task") == "broken")
+    assert record.outcome == "error"
+    assert "broken" in record.getMessage()

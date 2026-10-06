@@ -549,7 +549,7 @@ def process_job(job: ImportJob) -> None:
         db.session.rollback()
         _finish(job, "failed", err.message)
     except Exception:
-        log.exception("import job %s failed", job.id)
+        log.exception("import job %s (%s) for user %s failed", job.id, job.source, job.user_id)
         db.session.rollback()
         _finish(
             job, "failed", "The import failed unexpectedly. Try again, or check the server logs."

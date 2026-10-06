@@ -54,6 +54,8 @@ read **Putting it behind TLS** below — the quick start above serves plain HTTP
 | `CORS_ORIGINS` | api | `http://localhost:8080` | Comma-separated origins allowed to call `/api/v1`: wherever browsers actually load the UI from |
 | `UI_BASE_URL` | api | `http://localhost:8080` | Where `/api/auth/` sends users to approve desktop sign-ins, and (with federation on) the public identity users are found under |
 | `OPENAPI_DOCS_ENABLED` | api | `1` | Set to `0` to hide `/api/docs` and `/api/redoc` |
+| `LOG_LEVEL` | api, worker | `INFO` | `DEBUG`, `INFO`, `WARNING` or `ERROR`. The worker logs each task pass that did work at `INFO` (with its duration); idle polls show at `DEBUG` |
+| `LOG_FORMAT` | api, worker | `text` | `json` writes one JSON object per line (with `task` and `duration_ms` fields for worker tasks), for log aggregators |
 | `METRICS_PORT` | api | `9100` | Prometheus metrics port — keep it off the public network |
 | `WEB_CONCURRENCY` | api | `2` | gunicorn workers |
 | `RUN_MIGRATIONS` | api image | `1` | Apply database migrations on start |

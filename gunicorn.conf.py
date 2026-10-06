@@ -11,9 +11,19 @@ wsgi_app = "scrobbler:create_app()"
 bind = os.environ.get("BIND", "0.0.0.0:8000")
 workers = int(os.environ.get("WEB_CONCURRENCY", "2"))
 accesslog = "-"
+loglevel = os.environ.get("LOG_LEVEL", "INFO").lower()
 forwarded_allow_ips = os.environ.get("FORWARDED_ALLOW_IPS", "127.0.0.1")
 # gunicorn 26's control socket lives in $HOME, which the container user doesn't have.
 control_socket_disable = True
+
+
+def post_fork(server, worker):
+    # Gunicorn's own messages go through the app's handler too, so the format is uniform.
+    import logging
+
+    gunicorn_error = logging.getLogger("gunicorn.error")
+    gunicorn_error.handlers.clear()
+    gunicorn_error.propagate = True
 
 
 def on_starting(server):

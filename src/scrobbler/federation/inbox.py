@@ -224,7 +224,13 @@ def process(item: FederationInboxItem) -> None:
         db.session.rollback()
         transient = isinstance(err, FetchError) and err.reason == "network"
         if not transient:
-            log.exception("inbox item %s failed", item.id)
+            log.exception(
+                "inbox item %s (%s) failed on attempt %s of %s",
+                item.id,
+                item.activity_type,
+                item.attempts,
+                MAX_ATTEMPTS,
+            )
         if item.attempts < MAX_ATTEMPTS:
             _finish(item, "queued", f"retrying: {err}"[:255], done=False)
             return

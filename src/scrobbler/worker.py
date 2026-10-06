@@ -50,16 +50,42 @@ def registered(app: Flask | None = None) -> list[str]:
 
 
 def _call(task: _Task) -> bool:
+    started = time.monotonic()
     try:
-        worked = bool(task.fn())
+        result = task.fn()
     except Exception:
-        log.exception("worker task %s failed", task.name)
+        log.exception(
+            "worker task %s failed after %.0f ms",
+            task.name,
+            _elapsed_ms(started),
+            extra={"task": task.name, "outcome": "error", "duration_ms": _elapsed_ms(started)},
+        )
         db.session.rollback()
         metrics.worker_tasks_total.labels(task=task.name, outcome="error").inc()
         return False
+    worked = bool(result)
     if worked or task.every is not None:
         metrics.worker_tasks_total.labels(task=task.name, outcome="worked").inc()
+    duration = _elapsed_ms(started)
+    # Queue tasks are polled every couple of seconds, so only passes that did work are
+    # worth an INFO line; periodic tasks say so only when they report work (a truthy result).
+    log.log(
+        logging.INFO if worked else logging.DEBUG,
+        "worker task %s %s in %.0f ms",
+        task.name,
+        "worked" if worked else "ran (nothing to do)",
+        duration,
+        extra={
+            "task": task.name,
+            "outcome": "worked" if worked else "idle",
+            "duration_ms": duration,
+        },
+    )
     return worked
+
+
+def _elapsed_ms(started: float) -> float:
+    return round((time.monotonic() - started) * 1000, 1)
 
 
 def run_once() -> bool:

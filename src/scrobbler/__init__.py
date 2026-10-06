@@ -19,6 +19,10 @@ def create_app(config_object=None):
     app = Flask(__name__, static_folder=None)  # API only: the UI is hosted separately
     app.config.from_object(config_object or Config)
 
+    from scrobbler.logsetup import configure_logging
+
+    configure_logging(app.config["LOG_LEVEL"], app.config["LOG_FORMAT"])
+
     db.init_app(app)
     migrate.init_app(app, db, directory=_migrations_dir())
     http_metrics.init_app(app)

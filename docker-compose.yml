@@ -33,6 +33,8 @@ services:
       UI_BASE_URL: ${UI_BASE_URL:-http://localhost:8080}
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
       FORWARDED_ALLOW_IPS: "*"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-text}
       LASTFM_API_KEY: ${LASTFM_API_KEY:-}
       MUSICBRAINZ_CONTACT: ${MUSICBRAINZ_CONTACT:-}
       ART_STORAGE_DIR: ${ART_STORAGE_DIR:-/data/album-art}
@@ -68,6 +70,8 @@ services:
       FEDERATION_BASE_URL: ${FEDERATION_BASE_URL:-}
       FEDERATION_KEY_SECRET: ${FEDERATION_KEY_SECRET:-}
       RUN_MIGRATIONS: "0"  # the api service applies them
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-text}
     expose:
       - "9101"  # metrics: internal network only
     volumes:
