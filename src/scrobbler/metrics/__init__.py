@@ -122,6 +122,40 @@ worker_tasks_total = Counter(
     ["task", "outcome"],
 )
 
+# Album art (endpoint + background resolver)
+art_requests_total = Counter(
+    "scrobbler_art_requests_total",
+    "Album art endpoint responses: served, queued (first sighting), pending (still "
+    "resolving), unavailable (no art found), file_missing (re-queued)",
+    ["result"],
+)
+art_resolutions_total = Counter(
+    "scrobbler_art_resolutions_total",
+    "Album art resolutions by outcome (found, not_found, error) and caller (worker, inline)",
+    ["source", "result"],
+)
+art_upstream_seconds = Histogram(
+    "scrobbler_art_upstream_seconds",
+    "Latency of one album art upstream call, by service (musicbrainz, coverart, download)",
+    ["service", "outcome"],
+    buckets=(0.1, 0.25, 0.5, 1, 2.5, 5, 10, 20, 40),
+)
+art_upstream_errors_total = Counter(
+    "scrobbler_art_upstream_errors_total",
+    "Failed album art upstream calls, by service and exception class",
+    ["service", "error"],
+)
+art_worker_resolve_seconds = Histogram(
+    "scrobbler_art_worker_resolve_seconds",
+    "Time for the worker to resolve and download one album's art",
+    buckets=(0.25, 0.5, 1, 2.5, 5, 10, 20, 40, 80),
+)
+art_image_bytes = Histogram(
+    "scrobbler_art_image_bytes",
+    "Size of downloaded album art images",
+    buckets=(5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000),
+)
+
 # Database
 db_query_duration_seconds = Histogram(
     "scrobbler_db_query_duration_seconds",
@@ -150,4 +184,6 @@ COLLECTED = {
     "active_users": "scrobbler_active_users",
     "now_playing_active": "scrobbler_now_playing_active",
     "import_jobs": "scrobbler_import_jobs",
+    "art_cache": "scrobbler_art_cache",
+    "art_oldest_pending": "scrobbler_art_oldest_pending_seconds",
 }

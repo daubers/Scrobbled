@@ -50,6 +50,7 @@ def test_the_expected_dashboards_exist():
         "usage",
         "database",
         "federation",
+        "album-art",
     }
 
 

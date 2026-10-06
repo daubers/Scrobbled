@@ -12,6 +12,7 @@ from sqlalchemy.pool import NullPool
 
 from scrobbler.metrics import COLLECTED
 
+ART_STATUSES = ("pending", "found", "not_found", "error")
 ACTIVE_WINDOWS = {"1h": "1 hour", "24h": "24 hours", "7d": "7 days"}
 
 
@@ -46,11 +47,22 @@ class DatabaseStatsCollector(Collector):
                     )
                 ).all()
             )
+            art_cache = dict(
+                conn.execute(text("SELECT status, count(*) FROM album_art GROUP BY status")).all()
+            )
+            oldest_pending = conn.execute(
+                text(
+                    "SELECT coalesce(extract(epoch FROM now() - min(checked_at)), 0) "
+                    "FROM album_art WHERE status = 'pending'"
+                )
+            ).scalar_one()
         return {
             "users": users,
             "active": active,
             "now_playing": now_playing,
             "import_jobs": {s: import_jobs.get(s, 0) for s in ("pending", "running")},
+            "art_cache": {s: art_cache.get(s, 0) for s in ART_STATUSES},
+            "art_oldest_pending": float(oldest_pending),
         }
 
     def values(self) -> dict | None:
@@ -85,3 +97,14 @@ class DatabaseStatsCollector(Collector):
         for status, count in values["import_jobs"].items():
             jobs.add_metric([status], count)
         yield jobs
+        art = GaugeMetricFamily(
+            COLLECTED["art_cache"], "Album art cache rows by status", labels=["status"]
+        )
+        for status, count in values["art_cache"].items():
+            art.add_metric([status], count)
+        yield art
+        yield GaugeMetricFamily(
+            COLLECTED["art_oldest_pending"],
+            "Age of the longest-waiting album art request (0 if none pending)",
+            value=values["art_oldest_pending"],
+        )

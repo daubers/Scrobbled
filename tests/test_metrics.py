@@ -87,6 +87,9 @@ def test_database_stats_collector(app, user, make_user):
     active = {s.labels["window"]: s.value for s in families["scrobbler_active_users"].samples}
     assert active == {"1h": 1, "24h": 1, "7d": 1}
     assert families["scrobbler_now_playing_active"].samples[0].value == 1
+    cache = {s.labels["status"]: s.value for s in families["scrobbler_art_cache"].samples}
+    assert cache == {"pending": 0, "found": 0, "not_found": 0, "error": 0}
+    assert families["scrobbler_art_oldest_pending_seconds"].samples[0].value == 0
 
 
 def test_database_stats_collector_caches(app, user):

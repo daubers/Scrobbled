@@ -1,6 +1,7 @@
 from flask import Response
 from flask_smorest import Blueprint, abort
 
+from scrobbler import metrics
 from scrobbler.api.decorators import authenticated
 from scrobbler.schemas import AlbumArtArgsSchema, ErrorSchema
 from scrobbler.services import art
@@ -28,12 +29,18 @@ def album_art(args):
     row = art.get_cached(args["artist"], args["album"])
     if row is None:
         art.want(args["artist"], args["album"])
+        metrics.art_requests_total.labels("queued").inc()
         abort(404, code="no_album_art", message="Not resolved yet")
     image = art.read_file(row.id) if row.status == "found" else None
     if image is None:
         if row.status == "found":
             art.requeue(row)  # resolved before, but the file is missing - ask again
+            result = "file_missing"
+        else:
+            result = "pending" if row.status == "pending" else "unavailable"
+        metrics.art_requests_total.labels(result).inc()
         abort(404, code="no_album_art", message="No cover art found for this album")
+    metrics.art_requests_total.labels("served").inc()
     response = Response(image, mimetype="image/jpeg")
     response.headers["Cache-Control"] = "private, max-age=604800"  # 7 days; art rarely changes
     return response

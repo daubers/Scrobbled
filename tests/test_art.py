@@ -369,3 +369,56 @@ def test_album_art_requeues_a_found_row_with_a_missing_file(client, auth, art_co
     response = client.get("/api/v1/art/album?artist=Legacy&album=Album", headers=auth)
     assert response.status_code == 404
     assert row("Legacy", "Album").status == "pending"  # requeued for the worker to redo
+
+
+# --- metrics ------------------------------------------------------------------------------
+
+
+def test_worker_counts_resolutions_and_times_upstreams(art_config, metric_delta):
+    found = metric_delta("scrobbler_art_resolutions_total", source="worker", result="found")
+    resolve = metric_delta("scrobbler_art_worker_resolve_seconds_count")
+    image = metric_delta("scrobbler_art_image_bytes_count")
+    musicbrainz = metric_delta(
+        "scrobbler_art_upstream_seconds_count", service="musicbrainz", outcome="ok"
+    )
+    download = metric_delta(
+        "scrobbler_art_upstream_seconds_count", service="download", outcome="ok"
+    )
+    art.want("Radiohead", "In Rainbows")
+    art.resolve_one_pending()
+    assert (found.delta, resolve.delta, image.delta) == (1, 1, 1)
+    assert musicbrainz.delta == 1
+    assert download.delta == 1
+
+
+def test_worker_counts_download_failure_as_one_error(art_config, metric_delta):
+    errors = metric_delta("scrobbler_art_resolutions_total", source="worker", result="error")
+    found = metric_delta("scrobbler_art_resolutions_total", source="worker", result="found")
+    failed = metric_delta(
+        "scrobbler_art_upstream_errors_total", service="download", error="HTTPError"
+    )
+    art.want("Someone", "Download Fail Album")
+    art.resolve_one_pending()
+    assert (errors.delta, found.delta) == (1, 0)
+    assert failed.delta == 1
+
+
+def test_endpoint_counts_queued_pending_and_unavailable(client, auth, art_config, metric_delta):
+    queued = metric_delta("scrobbler_art_requests_total", result="queued")
+    pending = metric_delta("scrobbler_art_requests_total", result="pending")
+    unavailable = metric_delta("scrobbler_art_requests_total", result="unavailable")
+    url = "/api/v1/art/album?artist=Nobody&album=Nothing"
+    client.get(url, headers=auth)
+    client.get(url, headers=auth)
+    art.resolve_one_pending()
+    client.get(url, headers=auth)
+    assert (queued.delta, pending.delta, unavailable.delta) == (1, 1, 1)
+
+
+def test_endpoint_counts_served(client, auth, art_config, metric_delta):
+    served = metric_delta("scrobbler_art_requests_total", result="served")
+    url = "/api/v1/art/album?artist=Radiohead&album=In+Rainbows"
+    client.get(url, headers=auth)
+    art.resolve_one_pending()
+    assert client.get(url, headers=auth).status_code == 200
+    assert served.delta == 1

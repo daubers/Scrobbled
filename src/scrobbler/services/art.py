@@ -23,6 +23,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -31,10 +32,27 @@ from flask import current_app
 from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 
+from scrobbler import metrics
 from scrobbler.extensions import db
 from scrobbler.models import AlbumArt
 
 log = logging.getLogger(__name__)
+
+
+@contextmanager
+def _upstream_call(service: str):
+    """Times one upstream call and counts its failures (the error is re-raised)."""
+    start = time.perf_counter()
+    outcome = "ok"
+    try:
+        yield
+    except Exception as err:
+        outcome = "error"
+        metrics.art_upstream_errors_total.labels(service, type(err).__name__).inc()
+        raise
+    finally:
+        metrics.art_upstream_seconds.labels(service, outcome).observe(time.perf_counter() - start)
+
 
 # Lucene special characters MusicBrainz's search syntax requires escaping.
 _LUCENE_SPECIAL = re.compile(r'([+\-&|!(){}\[\]^"~*?:\\/])')
@@ -100,7 +118,10 @@ def _find_release_group(artist: str, album: str) -> str | None:
     for attempt in range(retries + 1):
         request = _throttled_request(f"{api_url}release-group/?{params}")
         try:
-            with urllib.request.urlopen(request, timeout=10) as response:
+            with (
+                _upstream_call("musicbrainz"),
+                urllib.request.urlopen(request, timeout=10) as response,
+            ):
                 body = json.load(response)
         except urllib.error.HTTPError as err:
             if attempt == retries or err.code < 500:
@@ -128,7 +149,7 @@ def _cover_art_url(release_group_mbid: str) -> str | None:
     for attempt in range(retries + 1):
         request = urllib.request.Request(url, method="HEAD")
         try:
-            with urllib.request.urlopen(request, timeout=15):
+            with _upstream_call("coverart"), urllib.request.urlopen(request, timeout=15):
                 return url
         except urllib.error.HTTPError as err:
             if err.code == 404:
@@ -199,6 +220,7 @@ def lookup(artist: str, album: str) -> ArtResult:
     if existing is not None and not _stale(existing):
         return ArtResult(existing.status, existing.image_url)
     result, release_group_mbid, error_code = _resolve(artist, album)
+    metrics.art_resolutions_total.labels("inline", result.status).inc()
     _store(artist, album, result, release_group_mbid, error_code)
     return result
 
@@ -238,7 +260,7 @@ def read_file(row_id: int) -> bytes | None:
 def fetch_image(image_url: str) -> ImageBytes:
     """Streams the bytes from image_url. Raises ArtFetchFailed on any problem."""
     try:
-        with urllib.request.urlopen(image_url, timeout=10) as response:
+        with _upstream_call("download"), urllib.request.urlopen(image_url, timeout=10) as response:
             return ImageBytes(response.read(), response.headers.get("Content-Type", "image/jpeg"))
     except (urllib.error.URLError, TimeoutError) as err:
         raise ArtFetchFailed(str(err)) from err
@@ -281,6 +303,7 @@ def resolve_one_pending() -> bool:
     if row is None:
         return False
 
+    start = time.perf_counter()
     result, release_group_mbid, error_code = _resolve(row.artist, row.album)
     if result.status == "found":
         try:
@@ -288,16 +311,19 @@ def resolve_one_pending() -> bool:
             path = _file_path(row.id)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(image.body)
+            metrics.art_image_bytes.observe(len(image.body))
         except ArtFetchFailed as err:
             log.warning("Album art download failed for %r/%r: %s", row.artist, row.album, err)
             result, error_code = ArtResult("error"), "ArtFetchFailed"
 
+    metrics.art_resolutions_total.labels("worker", result.status).inc()
     row.status = result.status
     row.image_url = result.image_url
     row.release_group_mbid = release_group_mbid
     row.error_code = error_code
     row.checked_at = datetime.now(UTC)
     db.session.commit()
+    metrics.art_worker_resolve_seconds.observe(time.perf_counter() - start)
     return True
 
 
