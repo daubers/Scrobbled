@@ -42,11 +42,13 @@ def create_app(config_object=None):
     )
 
     from scrobbler.cli import imports_cli, worker_command
+    from scrobbler.services import art as art_service
     from scrobbler.services import imports as import_service
 
     app.cli.add_command(worker_command)
     app.cli.add_command(imports_cli)
     import_service.register_worker_tasks(app)
+    art_service.register_worker_tasks(app)
 
     from scrobbler.metrics import db as db_metrics
 

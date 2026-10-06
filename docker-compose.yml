@@ -35,6 +35,7 @@ services:
       FORWARDED_ALLOW_IPS: "*"
       LASTFM_API_KEY: ${LASTFM_API_KEY:-}
       MUSICBRAINZ_CONTACT: ${MUSICBRAINZ_CONTACT:-}
+      ART_STORAGE_DIR: ${ART_STORAGE_DIR:-/data/album-art}
       FEDERATION_ENABLED: ${FEDERATION_ENABLED:-0}
       FEDERATION_DOMAIN: ${FEDERATION_DOMAIN:-}
       FEDERATION_BASE_URL: ${FEDERATION_BASE_URL:-}
@@ -43,6 +44,8 @@ services:
       - "${API_PORT:-5050}:8000"
     expose:
       - "9100"  # metrics: internal network only
+    volumes:
+      - album-art-data:/data/album-art
     depends_on:
       db:
         condition: service_healthy
@@ -58,6 +61,8 @@ services:
       DATABASE_URL: postgresql+psycopg://scrobbler:${POSTGRES_PASSWORD:-scrobbler}@db:5432/scrobbler
       SECRET_KEY: ${SECRET_KEY:-change-me}
       LASTFM_API_KEY: ${LASTFM_API_KEY:-}
+      MUSICBRAINZ_CONTACT: ${MUSICBRAINZ_CONTACT:-}
+      ART_STORAGE_DIR: ${ART_STORAGE_DIR:-/data/album-art}
       FEDERATION_ENABLED: ${FEDERATION_ENABLED:-0}
       FEDERATION_DOMAIN: ${FEDERATION_DOMAIN:-}
       FEDERATION_BASE_URL: ${FEDERATION_BASE_URL:-}
@@ -65,6 +70,8 @@ services:
       RUN_MIGRATIONS: "0"  # the api service applies them
     expose:
       - "9101"  # metrics: internal network only
+    volumes:
+      - album-art-data:/data/album-art
     healthcheck:
       disable: true
     depends_on:
@@ -124,5 +131,6 @@ services:
 
 volumes:
   db-data:
+  album-art-data:
   prometheus-data:
   grafana-data:

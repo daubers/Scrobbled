@@ -16,8 +16,12 @@ Prometheus ◄── API :9100/metrics, postgres-exporter ──► Grafana
 
 - **`api`**: Flask under gunicorn. API-only; it serves no HTML pages.
 - **`ui`**: nginx serving the static frontend (`frontend/`, no build step).
-- **`worker`**: `flask worker` — history imports and background tasks for optional
-  modules (federation's deliveries, scheduled posts, and so on).
+- **`worker`**: `flask worker` — history imports, resolving and downloading album art
+  (MusicBrainz + Cover Art Archive), and background tasks for optional modules
+  (federation's deliveries, scheduled posts, and so on). This is the only service that
+  makes outbound calls to third-party APIs (Last.fm, MusicBrainz, Cover Art Archive, and
+  remote fediverse servers with federation on) — worth knowing if you're restricting
+  egress.
 - **`db`**: PostgreSQL.
 - With the `monitoring` profile: `prometheus`, `grafana`, `postgres-exporter`.
 
@@ -54,7 +58,8 @@ read **Putting it behind TLS** below — the quick start above serves plain HTTP
 | `WEB_CONCURRENCY` | api | `2` | gunicorn workers |
 | `RUN_MIGRATIONS` | api image | `1` | Apply database migrations on start |
 | `LASTFM_API_KEY` | api, worker | *(unset)* | Enables importing straight from Last.fm ([get a key](https://www.last.fm/api/account/create)) |
-| `MUSICBRAINZ_CONTACT` | api | `UI_BASE_URL` | Contact URL/email sent to MusicBrainz for album art lookups (no key needed, but they ask for one) |
+| `MUSICBRAINZ_CONTACT` | api, worker | `UI_BASE_URL` | Contact URL/email sent to MusicBrainz for album art lookups (no key needed, but they ask for one) |
+| `ART_STORAGE_DIR` | api, worker | `var/album-art` | Where downloaded album art is stored; the worker writes it, the api serves it — both need access to the same directory (`docker compose` mounts a shared volume there) |
 | `IMPORT_MAX_BYTES` | api | 200 MB | Largest export file accepted |
 | `WORKER_METRICS_PORT` | worker | `9101` | The worker's Prometheus metrics port |
 | `API_BASE_URL` | ui image | `http://localhost:5050` | Where the browser reaches the API — written into `config.js` and the CSP |
@@ -186,6 +191,10 @@ gunzip -c backup-2026-01-01.sql.gz | docker compose exec -T db psql -U scrobbler
 Restoring an older dump with federation on will leave followers pointed at posts that no
 longer exist and profile data that's gone stale — expected after any point-in-time
 restore, not a sign anything's broken.
+
+The `album-art-data` volume is just a disposable cache of downloaded cover art — losing it
+isn't a data-loss event, the worker simply re-downloads anything missing the next time it's
+requested. No need to include it in backups.
 
 ## Upgrades
 
