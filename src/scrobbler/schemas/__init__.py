@@ -155,6 +155,11 @@ class TrackDetailArgsSchema(PageArgsSchema):
     track = fields.String(required=True, validate=validate.Length(min=1, max=500))
 
 
+class AlbumArtArgsSchema(Schema):
+    artist = fields.String(required=True, validate=validate.Length(min=1, max=500))
+    album = fields.String(required=True, validate=validate.Length(min=1, max=500))
+
+
 class TrackMetadataSchema(Schema):
     album = fields.String(allow_none=True)
     album_artist = fields.String(allow_none=True)

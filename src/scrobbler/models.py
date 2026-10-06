@@ -157,3 +157,29 @@ class ImportJob(db.Model):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AlbumArt(db.Model):
+    """Cached MusicBrainz + Cover Art Archive lookup for one (artist, album).
+
+    Global, not per-user: this is data about the real-world release, not a user's own data.
+    A row always exists once looked up — a miss or an error is cached too, so repeat requests
+    for an album with no art skip the upstream calls until due for a recheck.
+    """
+
+    __tablename__ = "album_art"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    artist: Mapped[str] = mapped_column(Text)
+    album: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16))  # found, not_found or error
+    image_url: Mapped[str | None] = mapped_column(Text)  # set iff status == "found"
+    release_group_mbid: Mapped[str | None] = mapped_column(String(36))
+    error_code: Mapped[str | None] = mapped_column(String(64))  # set iff status == "error"
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        Index(
+            "uq_album_art_artist_album_lower", func.lower(artist), func.lower(album), unique=True
+        ),
+    )
