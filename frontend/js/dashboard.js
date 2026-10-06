@@ -1,4 +1,5 @@
 import { api } from "./api.js";
+import { artThumb } from "./art.js";
 import { errorBox, formatDuration, h, num, replace, timeAgo } from "./dom.js";
 import { signedInPage } from "./layout.js";
 import { spectrum } from "./spectrum.js";
@@ -157,16 +158,17 @@ async function loadTop(period) {
     api(`/me/top/tracks?period=${period}&limit=10`),
   ]);
   renderRanking(document.getElementById("top-artists"), artists.items, false);
-  renderRanking(document.getElementById("top-albums"), albums.items, true);
+  renderRanking(document.getElementById("top-albums"), albums.items, true, false, true);
   renderRanking(document.getElementById("top-tracks"), tracks.items, true, true);
 }
 
-function renderRanking(list, items, withArtist, linkToSong = false) {
+function renderRanking(list, items, withArtist, linkToSong = false, withArt = false) {
   if (!items.length) {
     replace(list, h("li", { class: "empty" }, "No plays in this period."));
     return;
   }
   const max = items[0].playcount;
+  const meterOffset = withArt ? "5.75rem" : "2.75rem";
   replace(
     list,
     items.map((item) => {
@@ -177,13 +179,14 @@ function renderRanking(list, items, withArtist, linkToSong = false) {
       return h(
         "li",
         {},
+        withArt ? artThumb(item.artist, item.name) : null,
         h("span", { class: "rank" }, item.rank),
         name,
         h("span", { class: "plays" }, num(item.playcount)),
         h("span", {
           class: "meter",
           "aria-hidden": "true",
-          style: `width: calc((100% - 2.75rem) * ${item.playcount / max})`,
+          style: `width: calc((100% - ${meterOffset}) * ${item.playcount / max})`,
         }),
       );
     }),
@@ -261,6 +264,7 @@ async function loadRecent() {
       h(
         "li",
         {},
+        artThumb(s.album_artist || s.artist, s.album),
         h("time", { datetime: s.played_at, title: new Date(s.played_at).toLocaleString() }, timeAgo(s.played_at)),
         h(
           "a",

@@ -106,17 +106,30 @@ def _find_release_group(artist: str, album: str) -> str | None:
 
 
 def _cover_art_url(release_group_mbid: str) -> str | None:
-    """The release-group's front cover URL, or None if Cover Art Archive has none."""
+    """The release-group's front cover URL, or None if Cover Art Archive has none.
+
+    Cover Art Archive redirects to archive.org for the actual image, which is
+    occasionally slow — retried the same way as the MusicBrainz search, with a longer
+    per-attempt timeout to give that redirect room.
+    """
     coverart_url = current_app.config["COVERART_API_URL"]
     url = f"{coverart_url}release-group/{release_group_mbid}/front-500"
-    request = urllib.request.Request(url, method="HEAD")
-    try:
-        with urllib.request.urlopen(request, timeout=10):
-            return url
-    except urllib.error.HTTPError as err:
-        if err.code == 404:
-            return None
-        raise
+    retries = current_app.config["MUSICBRAINZ_RETRIES"]
+    for attempt in range(retries + 1):
+        request = urllib.request.Request(url, method="HEAD")
+        try:
+            with urllib.request.urlopen(request, timeout=15):
+                return url
+        except urllib.error.HTTPError as err:
+            if err.code == 404:
+                return None
+            if attempt == retries or err.code < 500:
+                raise
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == retries:
+                raise
+        time.sleep(min(10, 2**attempt))
+    raise TimeoutError("Cover Art Archive request exhausted its retries")
 
 
 def lookup(artist: str, album: str) -> ArtResult:

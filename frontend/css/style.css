@@ -1079,3 +1079,71 @@ input {
   margin: 0;
   font-weight: 600;
 }
+
+/* The song page's glowing display gets an art thumbnail alongside its text, when there's one */
+.display-with-art {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.display-with-art .display-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.display-art {
+  width: 4.5rem;
+  height: 4.5rem;
+  flex: none;
+}
+
+/* ---- Album art ---------------------------------------------------------------- */
+.art-thumb {
+  display: block;
+  border-radius: var(--radius-control);
+  object-fit: cover;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+}
+
+.art-thumb-empty {
+  position: relative;
+}
+
+/* No artwork: a plain ring, echoing .brand-mark's small round "lamp" motif */
+.art-thumb-empty::after {
+  content: "";
+  position: absolute;
+  inset: 32%;
+  border-radius: 50%;
+  border: 2px solid var(--bar);
+}
+
+/* Most played > Albums: a thumbnail column ahead of the rank */
+.ranking-art li {
+  grid-template-columns: 2.25rem 2rem minmax(0, 1fr) auto;
+}
+
+.ranking-art .art-thumb {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.ranking-art .meter {
+  left: 5.75rem;
+}
+
+/* Recently played / History: a thumbnail column ahead of the time */
+.log-art li {
+  grid-template-columns: 2.25rem 8rem minmax(0, 1fr);
+}
+
+.log-art.log-clock li {
+  grid-template-columns: 2.25rem 3.5rem minmax(0, 1fr);
+}
+
+.log-art .art-thumb {
+  width: 2.25rem;
+  height: 2.25rem;
+}

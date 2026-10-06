@@ -1,4 +1,5 @@
 import { api } from "./api.js";
+import { artThumb } from "./art.js";
 import { errorBox, formatDate, formatDay, formatDuration, formatTime, h, num, replace } from "./dom.js";
 import { signedInPage } from "./layout.js";
 import { spectrum } from "./spectrum.js";
@@ -38,9 +39,9 @@ function render(result) {
   document.title = `${result.track} · Scrobbler`;
   const m = result.metadata;
 
-  const display = h(
+  const body = h(
     "div",
-    { class: "display" },
+    { class: "display-body" },
     h("p", { class: "display-status" }, "Now viewing"),
     h("p", { class: "display-track" }, result.track),
     h(
@@ -50,6 +51,9 @@ function render(result) {
       m.album ? [" from ", h("strong", {}, m.album)] : null,
     ),
   );
+  const display = m.album
+    ? h("div", { class: "display display-with-art" }, artThumb(m.album_artist || result.artist, m.album, "display-art"), body)
+    : h("div", { class: "display" }, body);
   replace(panel, display, readouts(m), spectrum(result.counts, `Plays of ${result.track}`, "90 days"));
 
   const row = (label, value) =>

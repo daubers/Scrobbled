@@ -40,6 +40,29 @@ export function redirectToLogin() {
   location.href = `login.html?next=${encodeURIComponent(safeNext(here + location.search))}`;
 }
 
+// Fetches a binary resource (e.g. album art) with the same bearer-auth transport as api(),
+// returning a blob: object URL, or null on any failure (including a 404 "no art" response) -
+// the caller treats "missing" and "couldn't fetch" the same way: show a placeholder.
+export async function fetchImage(path) {
+  const headers = {};
+  const token = getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  let response;
+  try {
+    response = await fetch(`${apiBase}/api/v1${path}`, { headers });
+  } catch {
+    return null;
+  }
+  if (response.status === 401) {
+    setToken(null);
+    redirectToLogin();
+    return null;
+  }
+  if (!response.ok) return null;
+  return URL.createObjectURL(await response.blob());
+}
+
 export async function api(path, { method = "GET", body, auth = true } = {}) {
   const headers = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
