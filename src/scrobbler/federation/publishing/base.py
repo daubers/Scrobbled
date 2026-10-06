@@ -87,6 +87,7 @@ def publish(
     text: str,
     html: str,
     tags: tuple[str, ...] = DEFAULT_TAGS,
+    attachment: list[dict] = (),
 ) -> FederationPost | None:
     """Post `text`/`html` for the user, keyed by `kind:key`.
 
@@ -116,6 +117,7 @@ def publish(
         to=to,
         cc=cc,
         tags=list(tags),
+        attachment=list(attachment),
     )
     # activity.id is a Python-generated UUID (see activities.store), so it's already
     # usable below without a flush.

@@ -182,6 +182,27 @@ def test_note():
     assert doc["tag"] == [{"type": "Hashtag", "name": "#Scrobbler"}]
     assert doc["sensitive"] is False
     assert "@context" not in doc  # carried by the wrapping Create instead
+    assert "attachment" not in doc  # omitted entirely, not an empty list, when there's none
+
+
+def test_note_with_attachment():
+    image = {
+        "type": "Image",
+        "mediaType": "image/jpeg",
+        "url": f"{BASE}/art.jpg",
+        "name": "Cover art",
+    }
+    doc = vocab.note(
+        f"{BASE}/users/alice/posts/1",
+        actor_id=f"{BASE}/users/alice",
+        content_html="<p>Hello</p>",
+        published="2026-01-05T09:00:00Z",
+        url=f"{BASE}/post.html?id=1",
+        to=["FOLLOWERS"],
+        cc=[],
+        attachment=[image],
+    )
+    assert doc["attachment"] == [image]
 
 
 def test_create_wraps_a_note_with_the_same_addressing():

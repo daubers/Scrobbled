@@ -8,16 +8,31 @@ from scrobbler.extensions import db
 from scrobbler.federation import sharing
 from scrobbler.federation.models import FederationActivity, FederationNowPlaying, FederationPost
 from scrobbler.federation.publishing import now_playing
-from scrobbler.models import NowPlaying
+from scrobbler.models import AlbumArt, NowPlaying
 from scrobbler.services.scrobbles import TrackInput, update_now_playing
 
 
-def play(user, artist="Radiohead", track="Reckoner") -> datetime:
+def play(user, artist="Radiohead", track="Reckoner", album=None) -> datetime:
     """Sets the track as playing (started_at = now) and returns that now, so tests
     always measure elapsed/throttle time relative to when it actually started, not a
     fixed constant that would drift from real test-execution time."""
-    update_now_playing(user, TrackInput(artist=artist, track=track))
+    update_now_playing(user, TrackInput(artist=artist, track=track, album=album))
     return datetime.now(UTC)
+
+
+def cache_art(artist: str, album: str, status: str, image_url: str | None = None) -> None:
+    """Primes the AlbumArt cache directly, so art.lookup() is a cache hit and never
+    makes a real network call during tests."""
+    db.session.add(
+        AlbumArt(
+            artist=artist,
+            album=album,
+            status=status,
+            image_url=image_url,
+            checked_at=datetime.now(UTC),
+        )
+    )
+    db.session.commit()
 
 
 def stop_playing(user):
@@ -139,6 +154,44 @@ def test_post_sent_after_30_seconds(fed_ctx, posting_user):
         {"type": "Hashtag", "name": "#Scrobbler"},
         {"type": "Hashtag", "name": "#NowPlaying"},
     ]
+
+
+def test_post_includes_album_art_when_known(fed_ctx, posting_user):
+    cache_art(
+        "Radiohead",
+        "In Rainbows",
+        "found",
+        image_url="https://coverartarchive.org/release-group/test/front-500",
+    )
+    now = play(posting_user, album="In Rainbows")
+    now_playing.check_and_post(posting_user.id, now + timedelta(seconds=31))
+    [post] = posts_for(posting_user.id)
+    activity = db.session.get(FederationActivity, post.activity_id)
+    assert activity.document["object"]["attachment"] == [
+        {
+            "type": "Image",
+            "mediaType": "image/jpeg",
+            "url": "https://coverartarchive.org/release-group/test/front-500",
+            "name": "Cover art for In Rainbows",
+        }
+    ]
+
+
+def test_post_has_no_attachment_without_an_album(fed_ctx, posting_user):
+    now = play(posting_user)  # no album
+    now_playing.check_and_post(posting_user.id, now + timedelta(seconds=31))
+    [post] = posts_for(posting_user.id)
+    activity = db.session.get(FederationActivity, post.activity_id)
+    assert "attachment" not in activity.document["object"]
+
+
+def test_post_has_no_attachment_when_art_is_not_found(fed_ctx, posting_user):
+    cache_art("Radiohead", "Some Rare Bootleg", "not_found")
+    now = play(posting_user, album="Some Rare Bootleg")
+    now_playing.check_and_post(posting_user.id, now + timedelta(seconds=31))
+    [post] = posts_for(posting_user.id)
+    activity = db.session.get(FederationActivity, post.activity_id)
+    assert "attachment" not in activity.document["object"]
 
 
 def test_post_throttled_within_30_minutes(fed_ctx, posting_user):
