@@ -13,6 +13,8 @@ RUN uv sync --locked --no-dev --no-editable
 FROM python:3.13-slim
 LABEL org.opencontainers.image.licenses="BSD-3-Clause"
 RUN useradd --system --uid 10001 --no-create-home scrobbler
+# Downloaded album art lives here, on a volume shared with the worker (which writes it).
+RUN mkdir -p /data/album-art && chown scrobbler:scrobbler /data/album-art
 WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
 COPY gunicorn.conf.py docker/api-entrypoint.sh ./

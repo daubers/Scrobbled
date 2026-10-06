@@ -15,6 +15,7 @@ htmlcov/
 
 # Runtime
 prometheus_multiproc/
+var/album-art/
 
 # IDEs
 .idea/

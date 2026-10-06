@@ -64,6 +64,9 @@ class Config:
     MUSICBRAINZ_RETRIES = int(os.environ.get("MUSICBRAINZ_RETRIES", "2"))
     ART_NOT_FOUND_RETRY_DAYS = int(os.environ.get("ART_NOT_FOUND_RETRY_DAYS", "30"))
     ART_ERROR_RETRY_SECONDS = int(os.environ.get("ART_ERROR_RETRY_SECONDS", "3600"))
+    # Downloaded art is kept here, named by the album_art row's id. Needs write access
+    # from the worker (which downloads it) and read access from the api (which serves it).
+    ART_STORAGE_DIR = os.environ.get("ART_STORAGE_DIR", "var/album-art")
 
     IMPORT_MAX_BYTES = int(os.environ.get("IMPORT_MAX_BYTES", str(200 * 1024 * 1024)))
     MAX_CONTENT_LENGTH = IMPORT_MAX_BYTES + 1024 * 1024  # uploads are the largest requests
