@@ -183,3 +183,39 @@ class AlbumArt(db.Model):
             "uq_album_art_artist_album_lower", func.lower(artist), func.lower(album), unique=True
         ),
     )
+
+
+class UserAlbumArt(db.Model):
+    """One user's own art for (artist, album): an uploaded image, or a manual correction.
+
+    Takes precedence over the global `AlbumArt` cache for that user only. A correction
+    (a different search text and/or a MusicBrainz release-group ID) is resolved by the
+    worker, never by the request that asked for it; an upload is `found` immediately.
+    The image bytes live on disk, named by this row's id.
+    """
+
+    __tablename__ = "user_album_art"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    artist: Mapped[str] = mapped_column(Text)
+    album: Mapped[str] = mapped_column(Text)
+    kind: Mapped[str] = mapped_column(String(16))  # upload or correction
+    status: Mapped[str] = mapped_column(String(16))  # pending, found or error
+    search_artist: Mapped[str | None] = mapped_column(Text)  # correction inputs
+    search_album: Mapped[str | None] = mapped_column(Text)
+    release_group_mbid: Mapped[str | None] = mapped_column(String(36))
+    content_type: Mapped[str | None] = mapped_column(String(32))  # set iff status == "found"
+    error_code: Mapped[str | None] = mapped_column(String(64))  # set iff status == "error"
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (
+        Index(
+            "uq_user_album_art_user_artist_album_lower",
+            user_id,
+            func.lower(artist),
+            func.lower(album),
+            unique=True,
+        ),
+    )
