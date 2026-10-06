@@ -1149,3 +1149,24 @@ input {
   height: 2.25rem;
   align-self: center; /* .log li items default to stretch/start, which suits text, not art */
 }
+
+/* ---- Album art: fixing missing art ---------------------------------------------- */
+.art-row {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.art-thumb-lg {
+  width: 4rem;
+  height: 4rem;
+}
+
+.art-row-body .muted {
+  margin: 0.35rem 0 0.75rem;
+}
+
+.art-correction {
+  margin-top: 1rem;
+}

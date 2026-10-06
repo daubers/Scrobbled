@@ -6,6 +6,7 @@ import { h, replace } from "./dom.js";
 const NAV = [
   ["index.html", "Overview"],
   ["history.html", "History"],
+  ["art.html", "Album art"],
   ["apps.html", "Apps"],
   ["sessions.html", "Sessions"],
   ["import.html", "Import"],

@@ -156,6 +156,38 @@ art_image_bytes = Histogram(
     buckets=(5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000),
 )
 
+# Album art: per-user uploads and corrections
+art_uploads_total = Counter(
+    "scrobbler_art_uploads_total",
+    "Album art upload attempts: ok, empty, too_large or bad_type",
+    ["result"],
+)
+art_upload_bytes = Histogram(
+    "scrobbler_art_upload_bytes",
+    "Size of accepted album art uploads",
+    buckets=(5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000, 5_000_000),
+)
+art_override_actions_total = Counter(
+    "scrobbler_art_override_actions_total",
+    "Manual album art actions: correction_requested, retry_requested, override_deleted",
+    ["action"],
+)
+art_correction_resolutions_total = Counter(
+    "scrobbler_art_correction_resolutions_total",
+    "Worker outcome of a manual correction, by input (mbid or search) and result",
+    ["input", "result"],
+)
+art_correction_wait_seconds = Histogram(
+    "scrobbler_art_correction_wait_seconds",
+    "Time from a correction being requested to the worker finishing it",
+    buckets=(1, 5, 15, 30, 60, 300, 900, 3600, 6 * 3600),
+)
+art_override_worker_seconds = Histogram(
+    "scrobbler_art_override_worker_seconds",
+    "Time for the worker to resolve and download one corrected album's art",
+    buckets=(0.25, 0.5, 1, 2.5, 5, 10, 20, 40, 80),
+)
+
 # Database
 db_query_duration_seconds = Histogram(
     "scrobbler_db_query_duration_seconds",
@@ -186,4 +218,7 @@ COLLECTED = {
     "import_jobs": "scrobbler_import_jobs",
     "art_cache": "scrobbler_art_cache",
     "art_oldest_pending": "scrobbler_art_oldest_pending_seconds",
+    "art_overrides": "scrobbler_art_overrides",
+    "art_override_oldest_pending": "scrobbler_art_override_oldest_pending_seconds",
+    "art_unresolved": "scrobbler_art_unresolved_albums",
 }

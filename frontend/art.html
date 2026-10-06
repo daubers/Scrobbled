@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Album art · Scrobbler</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%231c2330'/%3E%3Ccircle cx='8' cy='8' r='3.5' fill='%23f2a541'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="config.js"></script>
+    <script type="module" src="js/art-failures.js"></script>
+  </head>
+  <body>
+    <header class="site-header" id="site-header"></header>
+    <main id="main">
+    <h1 class="page-title">Album art</h1>
+    <p class="lede" id="art-summary">Albums you've scrobbled that have no cover art.</p>
+    <div id="messages" aria-live="polite"></div>
+    <ul class="rows art-rows" id="albums"></ul>
+    <nav class="pager" aria-label="Pages" id="pager"></nav>
+    </main>
+  </body>
+</html>

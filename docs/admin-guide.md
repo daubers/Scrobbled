@@ -60,6 +60,7 @@ read **Putting it behind TLS** below — the quick start above serves plain HTTP
 | `LASTFM_API_KEY` | api, worker | *(unset)* | Enables importing straight from Last.fm ([get a key](https://www.last.fm/api/account/create)) |
 | `MUSICBRAINZ_CONTACT` | api, worker | `UI_BASE_URL` | Contact URL/email sent to MusicBrainz for album art lookups (no key needed, but they ask for one) |
 | `ART_STORAGE_DIR` | api, worker | `var/album-art` | Where downloaded album art is stored; the worker writes it, the api serves it — both need access to the same directory (`docker compose` mounts a shared volume there) |
+| `ART_UPLOAD_MAX_BYTES` | api | 5 MB | Largest image a user may upload as their own album art. A reverse proxy in front of the api needs a body limit at least this large |
 | `IMPORT_MAX_BYTES` | api | 200 MB | Largest export file accepted |
 | `WORKER_METRICS_PORT` | worker | `9101` | The worker's Prometheus metrics port |
 | `API_BASE_URL` | ui image | `http://localhost:5050` | Where the browser reaches the API — written into `config.js` and the CSP |
@@ -192,9 +193,11 @@ Restoring an older dump with federation on will leave followers pointed at posts
 longer exist and profile data that's gone stale — expected after any point-in-time
 restore, not a sign anything's broken.
 
-The `album-art-data` volume is just a disposable cache of downloaded cover art — losing it
-isn't a data-loss event, the worker simply re-downloads anything missing the next time it's
-requested. No need to include it in backups.
+The `album-art-data` volume holds two kinds of file. Cover art the worker downloaded is a
+disposable cache — it's simply re-downloaded the next time it's requested. Images users
+**upload** (and the art from their manual corrections) live under `user/` in the same
+volume and can't be re-created, so include the volume in your backups. The database rows
+that point at them are in `user_album_art`; restore the two together.
 
 ## Upgrades
 

@@ -67,6 +67,8 @@ class Config:
     # Downloaded art is kept here, named by the album_art row's id. Needs write access
     # from the worker (which downloads it) and read access from the api (which serves it).
     ART_STORAGE_DIR = os.environ.get("ART_STORAGE_DIR", "var/album-art")
+    # Largest image a user may upload as their own album art.
+    ART_UPLOAD_MAX_BYTES = int(os.environ.get("ART_UPLOAD_MAX_BYTES", str(5 * 1024 * 1024)))
 
     IMPORT_MAX_BYTES = int(os.environ.get("IMPORT_MAX_BYTES", str(200 * 1024 * 1024)))
     MAX_CONTENT_LENGTH = IMPORT_MAX_BYTES + 1024 * 1024  # uploads are the largest requests

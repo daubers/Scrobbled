@@ -90,6 +90,13 @@ def test_database_stats_collector(app, user, make_user):
     cache = {s.labels["status"]: s.value for s in families["scrobbler_art_cache"].samples}
     assert cache == {"pending": 0, "found": 0, "not_found": 0, "error": 0}
     assert families["scrobbler_art_oldest_pending_seconds"].samples[0].value == 0
+    overrides = {
+        (s.labels["kind"], s.labels["status"]): s.value
+        for s in families["scrobbler_art_overrides"].samples
+    }
+    assert len(overrides) == 6 and not any(overrides.values())
+    assert families["scrobbler_art_override_oldest_pending_seconds"].samples[0].value == 0
+    assert families["scrobbler_art_unresolved_albums"].samples[0].value == 0
 
 
 def test_database_stats_collector_caches(app, user):
@@ -159,3 +166,26 @@ def test_gunicorn_aggregates_worker_metrics(app, tmp_path):
     ]
     assert openapi.value == 10
     assert "scrobbler_users" in families
+
+
+def test_database_stats_collector_counts_art_backlog(app, user):
+    from scrobbler.extensions import db
+    from scrobbler.models import AlbumArt, UserAlbumArt
+
+    db.session.add_all(
+        [
+            AlbumArt(artist="A", album="Lost", status="not_found"),
+            AlbumArt(artist="A", album="Fixed", status="error"),
+            AlbumArt(artist="A", album="Fine", status="found"),
+            UserAlbumArt(user_id=user.id, artist="a", album="fixed", kind="upload", status="found"),
+            UserAlbumArt(
+                user_id=user.id, artist="A", album="Waiting", kind="correction", status="pending"
+            ),
+        ]
+    )
+    db.session.commit()
+    values = DatabaseStatsCollector(app.config["SQLALCHEMY_DATABASE_URI"]).values()
+    assert values["art_unresolved"] == 1  # "Lost"; "Fixed" has a user's upload
+    assert values["art_overrides"][("upload", "found")] == 1
+    assert values["art_overrides"][("correction", "pending")] == 1
+    assert values["art_override_oldest_pending"] >= 0

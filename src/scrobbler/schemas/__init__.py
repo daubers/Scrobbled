@@ -2,7 +2,7 @@
 validation and the generated OpenAPI document."""
 
 from flask_smorest.fields import Upload
-from marshmallow import Schema, fields, validate
+from marshmallow import Schema, ValidationError, fields, validate, validates_schema
 
 
 class ErrorDetailSchema(Schema):
@@ -158,6 +158,56 @@ class TrackDetailArgsSchema(PageArgsSchema):
 class AlbumArtArgsSchema(Schema):
     artist = fields.String(required=True, validate=validate.Length(min=1, max=500))
     album = fields.String(required=True, validate=validate.Length(min=1, max=500))
+
+
+class AlbumArtUploadSchema(Schema):
+    file = Upload(required=True, metadata={"description": "A JPEG, PNG or WebP image"})
+
+
+class AlbumArtCorrectionSchema(AlbumArtArgsSchema):
+    search_artist = fields.String(
+        validate=validate.Length(min=1, max=500),
+        metadata={"description": "Artist text to search MusicBrainz for, if it differs"},
+    )
+    search_album = fields.String(
+        validate=validate.Length(min=1, max=500),
+        metadata={"description": "Album text to search MusicBrainz for, if it differs"},
+    )
+    release_group_mbid = fields.UUID(
+        metadata={"description": "A MusicBrainz release-group ID; skips the search"}
+    )
+
+    @validates_schema
+    def _needs_a_correction(self, data, **kwargs):
+        if not any(k in data for k in ("search_artist", "search_album", "release_group_mbid")):
+            raise ValidationError("Give a search_artist, search_album or release_group_mbid")
+
+
+class AlbumArtOverrideSchema(Schema):
+    kind = fields.String(metadata={"description": "upload or correction"})
+    status = fields.String(metadata={"description": "pending, found or error"})
+    error_code = fields.String(allow_none=True)
+    search_artist = fields.String(allow_none=True)
+    search_album = fields.String(allow_none=True)
+    release_group_mbid = fields.String(allow_none=True)
+
+
+class AlbumArtFailureSchema(Schema):
+    artist = fields.String()
+    album = fields.String()
+    scrobbles = fields.Integer(metadata={"description": "Your scrobbles of this album"})
+    status = fields.String(
+        metadata={"description": "The shared lookup: pending, not_found or error"}
+    )
+    error_code = fields.String(allow_none=True)
+    checked_at = fields.DateTime(allow_none=True)
+    override = fields.Nested(
+        AlbumArtOverrideSchema, allow_none=True, metadata={"description": "Your own fix, if any"}
+    )
+
+
+class AlbumArtFailuresPageSchema(PageMetaSchema):
+    items = fields.List(fields.Nested(AlbumArtFailureSchema))
 
 
 class TrackMetadataSchema(Schema):
