@@ -250,10 +250,11 @@ def note(
     to: list[str],
     cc: list[str],
     tags: list[str] = (),
+    attachment: list[dict] = (),
 ) -> dict:
-    """A post (weekly summary or milestone). No `@context`: it's always embedded in the
-    Create that carries the same addressing, as Mastodon does."""
-    return {
+    """A post (now playing, weekly summary or milestone). No `@context`: it's always
+    embedded in the Create that carries the same addressing, as Mastodon does."""
+    doc = {
         "id": note_id,
         "type": "Note",
         "attributedTo": actor_id,
@@ -266,6 +267,9 @@ def note(
         "tag": [hashtag(t) for t in tags],
         "sensitive": False,
     }
+    if attachment:
+        doc["attachment"] = list(attachment)
+    return doc
 
 
 def create(activity_id: str, actor_id: str, obj: dict, *, to: list[str], cc: list[str]) -> dict:

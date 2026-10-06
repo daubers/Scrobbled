@@ -19,7 +19,7 @@ from scrobbler.federation import activities, actors, followers, publishing, shar
 from scrobbler.federation import metrics as fed_metrics
 from scrobbler.federation.models import FederationNowPlaying, FederationPost, FederationSettings
 from scrobbler.federation.protocol import content, vocab
-from scrobbler.services import accounts
+from scrobbler.services import accounts, art
 from scrobbler.services.scrobbles import get_now_playing
 
 KIND = "now_playing"
@@ -80,10 +80,36 @@ def _build_content(playing) -> tuple[str, str]:
     return text, html
 
 
+def _attachment_for(playing) -> list[dict]:
+    """Cover art for the post, if we have an album and can resolve it. Cover Art
+    Archive's sized convenience endpoints (what art.lookup() resolves to) are always
+    JPEG, whatever the original upload was."""
+    if not playing.album:
+        return []
+    result = art.lookup(playing.artist, playing.album)
+    if result.status != "found":
+        return []
+    return [
+        {
+            "type": "Image",
+            "mediaType": "image/jpeg",
+            "url": result.image_url,
+            "name": f"Cover art for {playing.album}",
+        }
+    ]
+
+
 def _post_now_playing(user, playing, key: str, state: FederationNowPlaying, now: datetime) -> str:
     text, html = _build_content(playing)
     post = publishing.publish(
-        user.id, user.username, KIND, key, text=text, html=html, tags=("Scrobbler", "NowPlaying")
+        user.id,
+        user.username,
+        KIND,
+        key,
+        text=text,
+        html=html,
+        tags=("Scrobbler", "NowPlaying"),
+        attachment=_attachment_for(playing),
     )
     if post is None:
         return "none"
