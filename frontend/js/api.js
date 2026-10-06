@@ -102,7 +102,7 @@ export async function api(path, { method = "GET", body, auth = true } = {}) {
 
 // Turn webargs validation details into a single readable sentence.
 export function describeError(error) {
-  const fields = error.details?.json ?? error.details?.query;
+  const fields = error.details?.json ?? error.details?.query ?? error.details?.files;
   if (fields) {
     return Object.entries(fields)
       .map(([field, messages]) => `${field}: ${[].concat(messages).join(" ")}`)
@@ -112,10 +112,10 @@ export function describeError(error) {
 }
 
 // Multipart upload with progress (fetch can't report upload progress).
-export function upload(path, formData, onProgress) {
+export function upload(path, formData, onProgress, method = "POST") {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${apiBase}/api/v1${path}`);
+    xhr.open(method, `${apiBase}/api/v1${path}`);
     const token = getToken();
     if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
     xhr.upload.addEventListener("progress", (event) => {

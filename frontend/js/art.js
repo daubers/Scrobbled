@@ -6,12 +6,20 @@ import { h } from "./dom.js";
 
 const cache = new Map(); // dedupes repeat/concurrent lookups for the same album within a page
 
+const keyFor = (artist, album) => `${artist.toLowerCase()}␟${album.toLowerCase()}`;
+
+// Forget a looked-up album (after the user uploads or corrects its art) so the next
+// artThumb() for it asks the server again instead of reusing the stale answer.
+export function forgetArt(artist, album) {
+  cache.delete(keyFor(artist, album));
+}
+
 export function artThumb(artist, album, extraClass) {
   const classes = extraClass ? `art-thumb ${extraClass}` : "art-thumb";
   const el = h("div", { class: `${classes} art-thumb-empty` });
   if (!album) return el; // nothing to look up
 
-  const key = `${artist.toLowerCase()}␟${album.toLowerCase()}`;
+  const key = keyFor(artist, album);
   if (!cache.has(key)) {
     cache.set(
       key,
