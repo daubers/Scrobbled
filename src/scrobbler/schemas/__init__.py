@@ -176,11 +176,22 @@ class AlbumArtCorrectionSchema(AlbumArtArgsSchema):
     release_group_mbid = fields.UUID(
         metadata={"description": "A MusicBrainz release-group ID; skips the search"}
     )
+    release_mbid = fields.UUID(
+        metadata={
+            "description": "A MusicBrainz release ID, as an alternative to a release-group ID; "
+            "skips the search"
+        }
+    )
 
     @validates_schema
     def _needs_a_correction(self, data, **kwargs):
-        if not any(k in data for k in ("search_artist", "search_album", "release_group_mbid")):
-            raise ValidationError("Give a search_artist, search_album or release_group_mbid")
+        ids = ("release_group_mbid", "release_mbid")
+        if not any(k in data for k in ("search_artist", "search_album", *ids)):
+            raise ValidationError(
+                "Give a search_artist, search_album, release_group_mbid or release_mbid"
+            )
+        if all(k in data for k in ids):
+            raise ValidationError("Give a release_group_mbid or a release_mbid, not both")
 
 
 class AlbumArtOverrideSchema(Schema):
@@ -190,6 +201,7 @@ class AlbumArtOverrideSchema(Schema):
     search_artist = fields.String(allow_none=True)
     search_album = fields.String(allow_none=True)
     release_group_mbid = fields.String(allow_none=True)
+    release_mbid = fields.String(allow_none=True)
 
 
 class AlbumArtFailureSchema(Schema):

@@ -205,6 +205,7 @@ class UserAlbumArt(db.Model):
     search_artist: Mapped[str | None] = mapped_column(Text)  # correction inputs
     search_album: Mapped[str | None] = mapped_column(Text)
     release_group_mbid: Mapped[str | None] = mapped_column(String(36))
+    release_mbid: Mapped[str | None] = mapped_column(String(36))  # alternative to the group ID
     content_type: Mapped[str | None] = mapped_column(String(32))  # set iff status == "found"
     error_code: Mapped[str | None] = mapped_column(String(64))  # set iff status == "error"
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

@@ -119,10 +119,11 @@ function albumRow(item) {
   correction.addEventListener("submit", (event) => {
     event.preventDefault();
     const body = { artist, album };
-    const { search_artist, search_album, release_group_mbid } = correction.elements;
+    const { search_artist, search_album, release_group_mbid, release_mbid } = correction.elements;
     if (search_artist.value.trim()) body.search_artist = search_artist.value.trim();
     if (search_album.value.trim()) body.search_album = search_album.value.trim();
     if (release_group_mbid.value.trim()) body.release_group_mbid = release_group_mbid.value.trim();
+    if (release_mbid.value.trim()) body.release_mbid = release_mbid.value.trim();
     act(() => api("/art/album/correction", { method: "PUT", body }), `Queued a corrected lookup for ${album}.`);
   });
 
@@ -163,6 +164,13 @@ function correctionForm(item, query) {
       "MusicBrainz release-group ID (optional)",
       own.release_group_mbid,
       "If you know it, paste the ID from the album's MusicBrainz page. It skips the search.",
+      { placeholder: "00000000-0000-0000-0000-000000000000", pattern: "[0-9a-fA-F-]{36}" },
+    ),
+    field(
+      "release_mbid",
+      "MusicBrainz release ID (optional)",
+      own.release_mbid,
+      "Or a specific release's ID, if that's the one you have. Use either this or the release-group ID.",
       { placeholder: "00000000-0000-0000-0000-000000000000", pattern: "[0-9a-fA-F-]{36}" },
     ),
     h("button", { type: "submit", class: "button" }, "Look it up"),

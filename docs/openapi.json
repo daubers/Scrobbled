@@ -1778,7 +1778,7 @@
           }
         },
         "summary": "Correct a failed lookup",
-        "description": "Queues a new lookup with different search text, or straight from a MusicBrainz\nrelease-group ID. The background worker resolves it; poll the failures list, or just\nfetch the art later. Replaces any earlier upload or correction of yours.",
+        "description": "Queues a new lookup with different search text, or straight from a MusicBrainz\nrelease-group or release ID. The background worker resolves it; poll the failures list, or just\nfetch the art later. Replaces any earlier upload or correction of yours.",
         "tags": [
           "Art"
         ],
@@ -4534,6 +4534,12 @@
               "string",
               "null"
             ]
+          },
+          "release_mbid": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "additionalProperties": false
@@ -4567,6 +4573,11 @@
             "type": "string",
             "format": "uuid",
             "description": "A MusicBrainz release-group ID; skips the search"
+          },
+          "release_mbid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A MusicBrainz release ID, as an alternative to a release-group ID; skips the search"
           }
         },
         "required": [
