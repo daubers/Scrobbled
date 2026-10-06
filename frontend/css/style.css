@@ -625,6 +625,22 @@ input {
   color: var(--ink-soft);
 }
 
+/* Stack the track above a muted artist line and make the cell a link, like .ranking rows */
+.log-stacked .by {
+  display: block;
+}
+
+.log-stacked li a {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.log-stacked li a:hover,
+.log-stacked li a:focus-visible {
+  text-decoration: underline;
+}
+
 .log-day {
   margin: 2rem 0 0.25rem;
   font-size: var(--step-0);
