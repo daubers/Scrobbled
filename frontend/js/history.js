@@ -1,4 +1,5 @@
 import { api } from "./api.js";
+import { artThumb } from "./art.js";
 import { errorBox, formatDay, formatTime, h, num, replace } from "./dom.js";
 import { signedInPage } from "./layout.js";
 
@@ -38,11 +39,12 @@ function render(result) {
       h("h2", { class: "log-day" }, formatDay(scrobbles[0].played_at)),
       h(
         "ol",
-        { class: "log log-clock" },
+        { class: "log log-clock log-art" },
         scrobbles.map((s) =>
           h(
             "li",
             {},
+            artThumb(s.album_artist || s.artist, s.album),
             h("time", { datetime: s.played_at }, formatTime(s.played_at)),
             h(
               "span",

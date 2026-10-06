@@ -1503,6 +1503,83 @@
         }
       ]
     },
+    "/api/v1/art/album": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "artist",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "album",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_CONTENT"
+          },
+          "502": {
+            "description": "MusicBrainz or Cover Art Archive is unreachable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No cover art found for this album",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The album's cover art"
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "An album's cover art",
+        "description": "Resolved via MusicBrainz + Cover Art Archive and cached; bytes are proxied on every\ncall, so cache this response client-side.",
+        "tags": [
+          "Art"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/healthz": {
       "get": {
         "responses": {
@@ -3373,6 +3450,10 @@
     {
       "name": "Imports",
       "description": "Import listening history from a Last.fm export file, or straight from Last.fm. Imports run in the background; poll a job to follow its progress."
+    },
+    {
+      "name": "Art",
+      "description": "Album art, proxied from MusicBrainz / Cover Art Archive"
     },
     {
       "name": "Health",

@@ -18,7 +18,7 @@ server {
         try_files $uri $uri/ =404;
         # Files aren't fingerprinted, so always revalidate.
         add_header Cache-Control "no-cache";
-        add_header Content-Security-Policy "default-src 'self'; connect-src 'self' ${API_BASE_URL}; img-src 'self' data:; style-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; connect-src 'self' ${API_BASE_URL}; img-src 'self' data: blob:; style-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" always;
         add_header X-Content-Type-Options nosniff always;
         add_header Referrer-Policy same-origin always;
     }

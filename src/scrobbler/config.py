@@ -54,6 +54,17 @@ class Config:
     LASTFM_API_KEY = os.environ.get("LASTFM_API_KEY", "")
     LASTFM_API_URL = os.environ.get("LASTFM_API_URL", "https://ws.audioscrobbler.com/2.0/")
     LASTFM_REQUEST_INTERVAL = float(os.environ.get("LASTFM_REQUEST_INTERVAL", "0.25"))
+
+    # Album art: MusicBrainz release-group search + Cover Art Archive, both free and keyless.
+    MUSICBRAINZ_API_URL = os.environ.get("MUSICBRAINZ_API_URL", "https://musicbrainz.org/ws/2/")
+    COVERART_API_URL = os.environ.get("COVERART_API_URL", "https://coverartarchive.org/")
+    # MusicBrainz requires a descriptive contact in the User-Agent or it throttles/blocks us.
+    MUSICBRAINZ_CONTACT = os.environ.get("MUSICBRAINZ_CONTACT", "") or UI_BASE_URL
+    MUSICBRAINZ_REQUEST_INTERVAL = float(os.environ.get("MUSICBRAINZ_REQUEST_INTERVAL", "1.0"))
+    MUSICBRAINZ_RETRIES = int(os.environ.get("MUSICBRAINZ_RETRIES", "2"))
+    ART_NOT_FOUND_RETRY_DAYS = int(os.environ.get("ART_NOT_FOUND_RETRY_DAYS", "30"))
+    ART_ERROR_RETRY_SECONDS = int(os.environ.get("ART_ERROR_RETRY_SECONDS", "3600"))
+
     IMPORT_MAX_BYTES = int(os.environ.get("IMPORT_MAX_BYTES", str(200 * 1024 * 1024)))
     MAX_CONTENT_LENGTH = IMPORT_MAX_BYTES + 1024 * 1024  # uploads are the largest requests
     # IMPORT_WORKER_METRICS_PORT is the pre-0.3 name, still honoured.

@@ -54,6 +54,7 @@ read **Putting it behind TLS** below — the quick start above serves plain HTTP
 | `WEB_CONCURRENCY` | api | `2` | gunicorn workers |
 | `RUN_MIGRATIONS` | api image | `1` | Apply database migrations on start |
 | `LASTFM_API_KEY` | api, worker | *(unset)* | Enables importing straight from Last.fm ([get a key](https://www.last.fm/api/account/create)) |
+| `MUSICBRAINZ_CONTACT` | api | `UI_BASE_URL` | Contact URL/email sent to MusicBrainz for album art lookups (no key needed, but they ask for one) |
 | `IMPORT_MAX_BYTES` | api | 200 MB | Largest export file accepted |
 | `WORKER_METRICS_PORT` | worker | `9101` | The worker's Prometheus metrics port |
 | `API_BASE_URL` | ui image | `http://localhost:5050` | Where the browser reaches the API — written into `config.js` and the CSP |
