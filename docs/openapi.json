@@ -1542,7 +1542,7 @@
             }
           },
           "200": {
-            "description": "The album's cover art"
+            "description": "The album's cover art (JPEG, PNG or WebP)"
           },
           "401": {
             "description": "Not authenticated",
@@ -1559,7 +1559,358 @@
           }
         },
         "summary": "An album's cover art",
-        "description": "Served from a local cache that a background worker task keeps filled; this endpoint\nnever makes a live MusicBrainz/Cover Art Archive call, so it can't be slowed down by\none. An album seen for the first time returns 404 until the worker resolves it,\ntypically within a few seconds - cache this response client-side and retry later.",
+        "description": "Your own uploaded or corrected art comes first. Otherwise it's served from a local\ncache that a background worker task keeps filled; this endpoint never makes a live\nMusicBrainz/Cover Art Archive call, so it can't be slowed down by one. An album seen\nfor the first time returns 404 until the worker resolves it, typically within a few\nseconds - cache this response client-side and retry later.",
+        "tags": [
+          "Art"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "artist",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "album",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_CONTENT"
+          },
+          "415": {
+            "description": "Not a JPEG, PNG or WebP image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Image too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumArtOverride"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/AlbumArtUpload"
+              }
+            }
+          }
+        },
+        "summary": "Upload your own art for an album",
+        "description": "Replaces any earlier upload or correction of yours for this album. Only you see it.",
+        "tags": [
+          "Art"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "artist",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "album",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_CONTENT"
+          },
+          "404": {
+            "description": "You have no art of your own for this album",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Remove your own art for an album",
+        "description": "The album goes back to the shared lookup result, if there is one.",
+        "tags": [
+          "Art"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/art/album/correction": {
+      "put": {
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_CONTENT"
+          },
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumArtOverride"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlbumArtCorrection"
+              }
+            }
+          }
+        },
+        "summary": "Correct a failed lookup",
+        "description": "Queues a new lookup with different search text, or straight from a MusicBrainz\nrelease-group ID. The background worker resolves it; poll the failures list, or just\nfetch the art later. Replaces any earlier upload or correction of yours.",
+        "tags": [
+          "Art"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/art/album/retry": {
+      "post": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "artist",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "album",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_CONTENT"
+          },
+          "409": {
+            "description": "Nothing to retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted"
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Look an album up again",
+        "description": "Re-queues the shared lookup for an album whose search found nothing or failed.",
+        "tags": [
+          "Art"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/art/failures": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 200
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_CONTENT"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumArtFailuresPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Albums of yours without art",
+        "description": "Albums you've scrobbled whose lookup found nothing or failed, plus ones where your\nown correction didn't work, most-scrobbled first. Albums you've fixed drop off.",
         "tags": [
           "Art"
         ],
@@ -3443,7 +3794,7 @@
     },
     {
       "name": "Art",
-      "description": "Album art, resolved from MusicBrainz / Cover Art Archive by a background worker"
+      "description": "Album art, resolved from MusicBrainz / Cover Art Archive by a background worker. You can also upload your own art, or correct a failed lookup; those only change what you see."
     },
     {
       "name": "Health",
@@ -4133,6 +4484,163 @@
         "required": [
           "username"
         ],
+        "additionalProperties": false
+      },
+      "AlbumArtUpload": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "description": "A JPEG, PNG or WebP image",
+            "type": "string",
+            "format": "binary"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "additionalProperties": false
+      },
+      "AlbumArtOverride": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "upload or correction"
+          },
+          "status": {
+            "type": "string",
+            "description": "pending, found or error"
+          },
+          "error_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "search_artist": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "search_album": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "release_group_mbid": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AlbumArtCorrection": {
+        "type": "object",
+        "properties": {
+          "artist": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "album": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "search_artist": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "Artist text to search MusicBrainz for, if it differs"
+          },
+          "search_album": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "Album text to search MusicBrainz for, if it differs"
+          },
+          "release_group_mbid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A MusicBrainz release-group ID; skips the search"
+          }
+        },
+        "required": [
+          "album",
+          "artist"
+        ],
+        "additionalProperties": false
+      },
+      "AlbumArtFailure": {
+        "type": "object",
+        "properties": {
+          "artist": {
+            "type": "string"
+          },
+          "album": {
+            "type": "string"
+          },
+          "scrobbles": {
+            "type": "integer",
+            "description": "Your scrobbles of this album"
+          },
+          "status": {
+            "type": "string",
+            "description": "The shared lookup: pending, not_found or error"
+          },
+          "error_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "checked_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "override": {
+            "description": "Your own fix, if any",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AlbumArtOverride"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AlbumArtFailuresPage": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer"
+          },
+          "per_page": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "total_pages": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlbumArtFailure"
+            }
+          }
+        },
         "additionalProperties": false
       },
       "Health": {

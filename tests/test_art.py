@@ -1,3 +1,4 @@
+import io
 import json
 import pathlib
 import threading
@@ -9,9 +10,11 @@ import pytest
 from werkzeug.serving import make_server
 
 from scrobbler.extensions import db
-from scrobbler.models import AlbumArt
+from scrobbler.models import AlbumArt, UserAlbumArt
 from scrobbler.services import art, scrobbles
 from scrobbler.services.scrobbles import TrackInput
+
+FOUND_MBID = "11111111-1111-1111-1111-111111111111"  # a real-looking id the fake has art for
 
 # Canned release-group matches, keyed by a substring of the Lucene search query we send.
 _RELEASE_GROUPS = {
@@ -38,7 +41,7 @@ def _fake_musicbrainz_caa(environ, start_response):
         )
         return [body]
 
-    if path == "/release-group/rg-found/front-500":
+    if path in ("/release-group/rg-found/front-500", f"/release-group/{FOUND_MBID}/front-500"):
         body = b"\xff\xd8\xff\xe0fake-jpeg-bytes"
         headers = [("Content-Type", "image/jpeg"), ("Content-Length", str(len(body)))]
         start_response("200 OK", headers)
@@ -581,3 +584,165 @@ def test_failures_paginates_most_scrobbled_first(art_config, user):
     assert (total, [i["album"] for i in items]) == (3, ["Album 1", "Album 2"])
     items, _ = art.list_failures(user.id, 2, 2)
     assert [i["album"] for i in items] == ["Album 0"]
+
+
+# --- per-user override endpoints -----------------------------------------------------------
+
+ALBUM = "artist=Nobody&album=Nothing"
+
+
+def upload(client, auth, data=JPEG, name="cover.jpg", query=ALBUM):
+    return client.post(
+        f"/api/v1/art/album?{query}",
+        headers=auth,
+        data={"file": (io.BytesIO(data), name)},
+        content_type="multipart/form-data",
+    )
+
+
+def test_upload_requires_auth(client):
+    assert client.post(f"/api/v1/art/album?{ALBUM}").status_code == 401
+
+
+def test_upload_then_get_serves_the_users_image(client, auth, art_config, metric_delta):
+    ok = metric_delta("scrobbler_art_uploads_total", result="ok")
+    size = metric_delta("scrobbler_art_upload_bytes_count")
+    served = metric_delta("scrobbler_art_requests_total", result="override")
+    response = upload(client, auth)
+    assert response.status_code == 201
+    assert response.get_json()["status"] == "found"
+    image = client.get(f"/api/v1/art/album?{ALBUM}", headers=auth)
+    assert image.status_code == 200
+    assert image.data == JPEG
+    assert image.mimetype == "image/jpeg"
+    assert image.headers["Cache-Control"] == "private, no-cache"
+    assert (ok.delta, size.delta, served.delta) == (1, 1, 1)
+
+
+def test_override_response_supports_conditional_requests(client, auth, art_config):
+    upload(client, auth)
+    first = client.get(f"/api/v1/art/album?{ALBUM}", headers=auth)
+    again = client.get(
+        f"/api/v1/art/album?{ALBUM}", headers={**auth, "If-None-Match": first.headers["ETag"]}
+    )
+    assert again.status_code == 304
+
+
+def test_upload_keeps_the_png_content_type(client, auth, art_config):
+    upload(client, auth, data=b"\x89PNG\r\n\x1a\nxxxx", name="c.png")
+    assert client.get(f"/api/v1/art/album?{ALBUM}", headers=auth).mimetype == "image/png"
+
+
+def test_upload_beats_the_shared_cache(client, auth, art_config):
+    insert("Nobody", "Nothing", "not_found")
+    upload(client, auth)
+    assert client.get(f"/api/v1/art/album?{ALBUM}", headers=auth).data == JPEG
+
+
+def test_upload_is_only_visible_to_its_owner(client, auth, art_config, make_user):
+    from scrobbler.services.accounts import issue_ui_token
+
+    upload(client, auth)
+    token = issue_ui_token(make_user(username="mallory"))
+    other = client.get(f"/api/v1/art/album?{ALBUM}", headers={"Authorization": f"Bearer {token}"})
+    assert other.status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("data", "status", "result"),
+    [(b"", 400, "empty"), (b"GIF89a....", 415, "bad_type"), (JPEG + b"x" * 100, 413, "too_large")],
+)
+def test_upload_rejects_bad_files(
+    client, auth, app, art_config, metric_delta, data, status, result
+):
+    app.config["ART_UPLOAD_MAX_BYTES"] = 50
+    try:
+        counted = metric_delta("scrobbler_art_uploads_total", result=result)
+        assert upload(client, auth, data=data).status_code == status
+        assert counted.delta == 1
+        assert override_row() is None
+    finally:
+        app.config["ART_UPLOAD_MAX_BYTES"] = 5 * 1024 * 1024
+
+
+def override_row():
+    return db.session.scalar(db.select(UserAlbumArt))
+
+
+def test_upload_requires_artist_and_album(client, auth, art_config):
+    assert upload(client, auth, query="artist=A").status_code == 422
+
+
+def test_delete_override_reverts_to_the_shared_cache(client, auth, art_config, metric_delta):
+    deleted = metric_delta("scrobbler_art_override_actions_total", action="override_deleted")
+    upload(client, auth)
+    assert client.delete(f"/api/v1/art/album?{ALBUM}", headers=auth).status_code == 204
+    assert client.get(f"/api/v1/art/album?{ALBUM}", headers=auth).status_code == 404
+    assert client.delete(f"/api/v1/art/album?{ALBUM}", headers=auth).status_code == 404
+    assert deleted.delta == 1
+
+
+def test_correction_is_queued_without_touching_the_network(
+    client, auth, app, art_config, metric_delta
+):
+    app.config.update(
+        MUSICBRAINZ_API_URL="http://127.0.0.1:1/", COVERART_API_URL="http://127.0.0.1:1/"
+    )
+    queued = metric_delta("scrobbler_art_override_actions_total", action="correction_requested")
+    response = client.put(
+        "/api/v1/art/album/correction",
+        headers=auth,
+        json={"artist": "Radiohead", "album": "Inrainbows", "search_album": "In Rainbows"},
+    )
+    assert response.status_code == 202
+    body = response.get_json()
+    assert (body["kind"], body["status"], body["search_album"]) == (
+        "correction",
+        "pending",
+        "In Rainbows",
+    )
+    assert queued.delta == 1
+
+
+def test_correction_then_worker_then_get(client, auth, art_config):
+    url = "/api/v1/art/album?artist=Radiohead&album=Inrainbows"
+    client.put(
+        "/api/v1/art/album/correction",
+        headers=auth,
+        json={"artist": "Radiohead", "album": "Inrainbows", "release_group_mbid": FOUND_MBID},
+    )
+    assert client.get(url, headers=auth).status_code == 404  # not resolved yet
+    art.resolve_one_pending()
+    assert client.get(url, headers=auth).data == b"\xff\xd8\xff\xe0fake-jpeg-bytes"
+
+
+def test_correction_needs_something_to_correct_and_a_valid_mbid(client, auth):
+    url = "/api/v1/art/album/correction"
+    assert client.put(url, headers=auth, json={"artist": "A", "album": "B"}).status_code == 422
+    bad = {"artist": "A", "album": "B", "release_group_mbid": "nope"}
+    assert client.put(url, headers=auth, json=bad).status_code == 422
+
+
+def test_retry_requeues_a_failed_lookup(client, auth, art_config, metric_delta):
+    retried = metric_delta("scrobbler_art_override_actions_total", action="retry_requested")
+    insert("Nobody", "Nothing", "not_found")
+    assert client.post(f"/api/v1/art/album/retry?{ALBUM}", headers=auth).status_code == 202
+    assert row("Nobody", "Nothing").status == "pending"
+    assert client.post(f"/api/v1/art/album/retry?{ALBUM}", headers=auth).status_code == 409
+    assert retried.delta == 1
+
+
+def test_failures_endpoint(client, auth, art_config, user):
+    scrobble_album(user, "Nobody", "Nothing", count=2)
+    insert("Nobody", "Nothing", "not_found")
+    body = client.get("/api/v1/art/failures", headers=auth).get_json()
+    assert (body["total"], body["total_pages"], body["page"]) == (1, 1, 1)
+    assert body["items"][0]["album"] == "Nothing"
+    assert body["items"][0]["scrobbles"] == 2
+    assert body["items"][0]["override"] is None
+    upload(client, auth)
+    assert client.get("/api/v1/art/failures", headers=auth).get_json()["items"] == []
+
+
+def test_failures_requires_auth(client):
+    assert client.get("/api/v1/art/failures").status_code == 401
