@@ -125,6 +125,25 @@ groups:
           summary: Over half of {{ $labels.service }} album art calls are failing
           description: Failed lookups are cached as errors and retried later; check the upstream's status.
 
+      - alert: AlbumArtCorrectionBacklog
+        expr: max(scrobbler_art_override_oldest_pending_seconds) > 900
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: A manual album art correction has been waiting over 15 minutes
+          description: The worker is probably stopped, or MusicBrainz / Cover Art Archive is failing.
+
+      - alert: AlbumArtUploadRejections
+        expr: |
+          sum(rate(scrobbler_art_uploads_total{result!="ok"}[30m]))
+            / sum(rate(scrobbler_art_uploads_total[30m])) > 0.5
+            and sum(rate(scrobbler_art_uploads_total[30m])) > 0.002
+        for: 30m
+        labels: {severity: warning}
+        annotations:
+          summary: Most album art uploads are being rejected
+          description: Check the Album Art dashboard for the reason (too_large suggests ART_UPLOAD_MAX_BYTES or a proxy limit; bad_type a client sending the wrong format).
+
       - alert: PostgresDown
         expr: pg_up == 0
         for: 2m
