@@ -262,7 +262,12 @@ async function loadRecent() {
         "li",
         {},
         h("time", { datetime: s.played_at, title: new Date(s.played_at).toLocaleString() }, timeAgo(s.played_at)),
-        h("span", {}, h("span", { class: "track" }, s.track), h("span", { class: "by" }, ` by ${s.artist}`)),
+        h(
+          "a",
+          { href: songHref(s.artist, s.track) },
+          h("span", { class: "track" }, s.track),
+          h("span", { class: "by" }, s.artist),
+        ),
       ),
     ),
   );
