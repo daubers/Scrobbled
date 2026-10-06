@@ -172,9 +172,14 @@ art_override_actions_total = Counter(
     "Manual album art actions: correction_requested, retry_requested, override_deleted",
     ["action"],
 )
+art_mbid_lookups_total = Counter(
+    "scrobbler_art_mbid_lookups_total",
+    "Album art lookups that tried a scrobble's recording MBID, by result (matched, missed)",
+    ["result"],
+)
 art_correction_resolutions_total = Counter(
     "scrobbler_art_correction_resolutions_total",
-    "Worker outcome of a manual correction, by input (mbid or search) and result",
+    "Worker outcome of a manual correction, by input (mbid, release_mbid or search) and result",
     ["input", "result"],
 )
 art_correction_wait_seconds = Histogram(

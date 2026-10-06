@@ -127,10 +127,11 @@ def correct_art(body):
     """Correct a failed lookup
 
     Queues a new lookup with different search text, or straight from a MusicBrainz
-    release-group ID. The background worker resolves it; poll the failures list, or just
+    release-group or release ID. The background worker resolves it; poll the failures list, or just
     fetch the art later. Replaces any earlier upload or correction of yours.
     """
     mbid = body.get("release_group_mbid")
+    release_mbid = body.get("release_mbid")
     art.request_correction(
         g.user.id,
         body["artist"],
@@ -138,6 +139,7 @@ def correct_art(body):
         body.get("search_artist"),
         body.get("search_album"),
         str(mbid) if mbid else None,
+        str(release_mbid) if release_mbid else None,
     )
     return art.get_override(g.user.id, body["artist"], body["album"])
 

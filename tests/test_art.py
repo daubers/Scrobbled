@@ -25,6 +25,18 @@ _RELEASE_GROUPS = {
 }
 
 
+# Canned recordings (a scrobble's MBID) and the releases MusicBrainz lists them on.
+RECORDING_MBID = "22222222-2222-2222-2222-222222222222"
+UNMATCHED_RECORDING_MBID = "33333333-3333-3333-3333-333333333333"
+_RECORDINGS = {
+    RECORDING_MBID: [
+        {"title": "Some Compilation", "release-group": {"id": "rg-other"}},
+        {"title": "Mbid Album", "release-group": {"id": "rg-found"}},
+    ],
+    UNMATCHED_RECORDING_MBID: [{"title": "Another Album", "release-group": {"id": "rg-other"}}],
+}
+
+
 def _fake_musicbrainz_caa(environ, start_response):
     method, path = environ["REQUEST_METHOD"], environ["PATH_INFO"]
 
@@ -41,7 +53,23 @@ def _fake_musicbrainz_caa(environ, start_response):
         )
         return [body]
 
-    if path in ("/release-group/rg-found/front-500", f"/release-group/{FOUND_MBID}/front-500"):
+    if path.startswith("/recording/"):
+        recording = path.rsplit("/", 1)[1]
+        releases = _RECORDINGS.get(recording)
+        if releases is None:
+            start_response("404 Not Found", [("Content-Type", "text/plain")])
+            return [b"not found"]
+        body = json.dumps({"releases": releases}).encode()
+        start_response(
+            "200 OK", [("Content-Type", "application/json"), ("Content-Length", str(len(body)))]
+        )
+        return [body]
+
+    if path in (
+        "/release-group/rg-found/front-500",
+        f"/release-group/{FOUND_MBID}/front-500",
+        f"/release/{FOUND_MBID}/front-500",
+    ):
         body = b"\xff\xd8\xff\xe0fake-jpeg-bytes"
         headers = [("Content-Type", "image/jpeg"), ("Content-Length", str(len(body)))]
         start_response("200 OK", headers)
@@ -746,3 +774,79 @@ def test_failures_endpoint(client, auth, art_config, user):
 
 def test_failures_requires_auth(client):
     assert client.get("/api/v1/art/failures").status_code == 401
+
+
+def scrobble_with_mbid(user, artist, track, album, mbid):
+    scrobbles.submit_scrobbles(
+        user, None, [TrackInput(artist, track, album=album, mbid=mbid, timestamp=int(time.time()))]
+    )
+
+
+def test_scrobble_mbid_finds_the_release_group_without_a_text_match(art_config, user, metric_delta):
+    # "Mbid Album" matches nothing in the fake's text search, so only the recording can find it
+    matched = metric_delta("scrobbler_art_mbid_lookups_total", result="matched")
+    scrobble_with_mbid(user, "Radiohead", "Track", "Mbid Album", RECORDING_MBID)
+    art.want("Radiohead", "Mbid Album")
+    assert art.resolve_one_pending() is True
+    found = row("Radiohead", "Mbid Album")
+    assert (found.status, found.release_group_mbid) == ("found", "rg-found")
+    assert matched.delta == 1
+
+
+def test_scrobble_mbid_with_no_matching_release_falls_back_to_text_search(
+    art_config, user, metric_delta
+):
+    missed = metric_delta("scrobbler_art_mbid_lookups_total", result="missed")
+    scrobble_with_mbid(user, "Radiohead", "Track", "In Rainbows", UNMATCHED_RECORDING_MBID)
+    art.want("Radiohead", "In Rainbows")
+    art.resolve_one_pending()
+    assert row("Radiohead", "In Rainbows").release_group_mbid == "rg-found"
+    assert missed.delta == 1
+
+
+def test_unknown_scrobble_mbid_falls_back_to_text_search(art_config, user):
+    unknown = "44444444-4444-4444-4444-444444444444"
+    scrobble_with_mbid(user, "Radiohead", "Track", "In Rainbows", unknown)
+    art.want("Radiohead", "In Rainbows")
+    art.resolve_one_pending()
+    assert row("Radiohead", "In Rainbows").status == "found"
+
+
+def test_no_scrobble_mbid_means_no_recording_lookup(art_config, user, metric_delta):
+    tried = metric_delta("scrobbler_art_mbid_lookups_total", result="missed")
+    scrobble_with_mbid(user, "Radiohead", "Track", "In Rainbows", None)
+    art.want("Radiohead", "In Rainbows")
+    art.resolve_one_pending()
+    assert row("Radiohead", "In Rainbows").status == "found"
+    assert tried.delta == 0
+
+
+def test_correction_with_search_text_ignores_the_scrobble_mbid(art_config, user):
+    scrobble_with_mbid(user, "Radiohead", "Track", "Mbid Album", RECORDING_MBID)
+    art.request_correction(user.id, "Radiohead", "Mbid Album", None, "No Art Album", None)
+    art.resolve_one_pending()
+    assert override(user, "Radiohead", "Mbid Album").status == "error"  # searched the text given
+
+
+def test_correction_by_release_mbid_is_resolved_from_the_release(art_config, user, metric_delta):
+    resolved = metric_delta(
+        "scrobbler_art_correction_resolutions_total", input="release_mbid", result="found"
+    )
+    art.request_correction(user.id, "Radiohead", "Inrainbows", None, None, None, FOUND_MBID)
+    assert art.resolve_one_pending() is True
+    fixed = override(user, "Radiohead", "Inrainbows")
+    assert (fixed.status, fixed.release_mbid) == ("found", FOUND_MBID)
+    assert art.read_override_file(fixed) == b"\xff\xd8\xff\xe0fake-jpeg-bytes"
+    assert resolved.delta == 1
+
+
+def test_correction_api_accepts_a_release_mbid_but_not_both_ids(client, auth):
+    url = "/api/v1/art/album/correction"
+    ok = {"artist": "A", "album": "B", "release_mbid": FOUND_MBID}
+    response = client.put(url, headers=auth, json=ok)
+    assert response.status_code == 202
+    assert response.get_json()["release_mbid"] == FOUND_MBID
+    both = {**ok, "release_group_mbid": FOUND_MBID}
+    assert client.put(url, headers=auth, json=both).status_code == 422
+    bad = {"artist": "A", "album": "B", "release_mbid": "nope"}
+    assert client.put(url, headers=auth, json=bad).status_code == 422

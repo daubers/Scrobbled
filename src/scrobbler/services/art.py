@@ -1,5 +1,9 @@
 """Album art: MusicBrainz release-group search + Cover Art Archive, both free and keyless.
 
+A scrobble's MBID (the recording) is tried first when we have one for the album: it names
+the release-group exactly, where the text search can only guess. Without one, or without a
+matching release, the text search is used as before.
+
 Every (artist, album) lookup is cached in `AlbumArt` — a miss or an error is cached too, so
 repeat requests for an album we can't find art for don't keep hammering the upstream APIs.
 `lookup()` resolves *where* the art is (and never raises); `fetch_image()` streams the bytes
@@ -109,42 +113,77 @@ def _stale(row: AlbumArt) -> bool:
     return now - row.checked_at > threshold
 
 
-def _find_release_group(artist: str, album: str) -> str | None:
-    """A matching release-group's MBID, or None if MusicBrainz has no match."""
+def _musicbrainz_get(path: str, params: dict[str, str], missing_ok: bool = False) -> dict | None:
+    """GET a MusicBrainz JSON document, retrying server errors and timeouts. With
+    `missing_ok`, a 404 returns None; other client errors and exhausted retries raise."""
     api_url = current_app.config["MUSICBRAINZ_API_URL"]
-    query = f'releasegroup:"{_escape(album)}" AND artist:"{_escape(artist)}"'
-    params = urllib.parse.urlencode({"query": query, "fmt": "json", "limit": "5"})
+    query = urllib.parse.urlencode({**params, "fmt": "json"})
     retries = current_app.config["MUSICBRAINZ_RETRIES"]
     for attempt in range(retries + 1):
-        request = _throttled_request(f"{api_url}release-group/?{params}")
+        request = _throttled_request(f"{api_url}{path}?{query}")
         try:
             with (
                 _upstream_call("musicbrainz"),
                 urllib.request.urlopen(request, timeout=10) as response,
             ):
-                body = json.load(response)
+                return json.load(response)
         except urllib.error.HTTPError as err:
+            if missing_ok and err.code == 404:
+                return None
             if attempt == retries or err.code < 500:
                 raise
         except (urllib.error.URLError, TimeoutError):
             if attempt == retries:
                 raise
-        else:
-            groups = body.get("release-groups") or []
-            return groups[0]["id"] if groups else None
         time.sleep(min(10, 2**attempt))
     raise TimeoutError("MusicBrainz request exhausted its retries")
 
 
-def _cover_art_url(release_group_mbid: str) -> str | None:
-    """The release-group's front cover URL, or None if Cover Art Archive has none.
+def _find_release_group(artist: str, album: str) -> str | None:
+    """A matching release-group's MBID, or None if MusicBrainz has no match."""
+    query = f'releasegroup:"{_escape(album)}" AND artist:"{_escape(artist)}"'
+    body = _musicbrainz_get("release-group/", {"query": query, "limit": "5"}) or {}
+    groups = body.get("release-groups") or []
+    return groups[0]["id"] if groups else None
+
+
+def _release_group_of_recording(recording_mbid: str, album: str) -> str | None:
+    """The release-group of the recording's release titled `album`, or None if MusicBrainz
+    doesn't know the recording or none of its releases has that title."""
+    body = _musicbrainz_get(
+        f"recording/{recording_mbid}", {"inc": "releases+release-groups"}, missing_ok=True
+    )
+    for release in (body or {}).get("releases") or []:
+        group = release.get("release-group") or {}
+        if (release.get("title") or "").casefold() == album.casefold() and group.get("id"):
+            return group["id"]
+    return None
+
+
+def _scrobbled_recording_mbid(artist: str, album: str) -> str | None:
+    """A recording MBID some scrobble of this album carried (the newest), if any."""
+    return db.session.scalar(
+        select(Scrobble.mbid)
+        .where(
+            func.lower(Scrobble.artist) == artist.lower(),
+            func.lower(Scrobble.album) == album.lower(),
+            Scrobble.mbid.is_not(None),
+        )
+        .order_by(Scrobble.played_at.desc())
+        .limit(1)
+    )
+
+
+def _cover_art_url(mbid: str, entity: str = "release-group") -> str | None:
+    """The release-group's (or release's) front cover URL, or None if Cover Art Archive
+    has none.
 
     Cover Art Archive redirects to archive.org for the actual image, which is
     occasionally slow — retried the same way as the MusicBrainz search, with a longer
     per-attempt timeout to give that redirect room.
     """
     coverart_url = current_app.config["COVERART_API_URL"]
-    url = f"{coverart_url}release-group/{release_group_mbid}/front-500"
+    url = f"{coverart_url}{entity}/{mbid}/front-500"
     retries = current_app.config["MUSICBRAINZ_RETRIES"]
     for attempt in range(retries + 1):
         request = urllib.request.Request(url, method="HEAD")
@@ -173,12 +212,19 @@ def get_cached(artist: str, album: str) -> AlbumArt | None:
     )
 
 
-def _resolve(artist: str, album: str) -> tuple[ArtResult, str | None, str | None]:
+def _resolve(
+    artist: str, album: str, use_scrobble_mbid: bool = True
+) -> tuple[ArtResult, str | None, str | None]:
     """Live MusicBrainz + Cover Art Archive resolution, no caching involved. Returns
     (result, release_group_mbid, error_code). Never raises."""
     release_group_mbid = None
     try:
-        release_group_mbid = _find_release_group(artist, album)
+        if use_scrobble_mbid and (recording := _scrobbled_recording_mbid(artist, album)):
+            release_group_mbid = _release_group_of_recording(recording, album)
+            outcome = "matched" if release_group_mbid else "missed"
+            metrics.art_mbid_lookups_total.labels(outcome).inc()
+        if release_group_mbid is None:
+            release_group_mbid = _find_release_group(artist, album)
         image_url = _cover_art_url(release_group_mbid) if release_group_mbid else None
         status = "found" if image_url else "not_found"
         return ArtResult(status, image_url), release_group_mbid, None
@@ -357,9 +403,10 @@ def request_correction(
     search_artist: str | None,
     search_album: str | None,
     release_group_mbid: str | None,
+    release_mbid: str | None = None,
 ) -> None:
     """Queue a corrected lookup (different search text, or a known MusicBrainz
-    release-group) for the worker. A fast, network-free write."""
+    release-group or release) for the worker. A fast, network-free write."""
     _upsert_override(
         user_id,
         artist,
@@ -370,6 +417,7 @@ def request_correction(
         search_artist=search_artist,
         search_album=search_album,
         release_group_mbid=release_group_mbid,
+        release_mbid=release_mbid,
         error_code=None,
     )
     metrics.art_override_actions_total.labels("correction_requested").inc()
@@ -465,6 +513,7 @@ def list_failures(user_id: int, page: int, limit: int) -> tuple[list[dict], int]
                     "search_artist": override.search_artist,
                     "search_album": override.search_album,
                     "release_group_mbid": override.release_group_mbid,
+                    "release_mbid": override.release_mbid,
                 }
                 if override
                 else None
@@ -518,15 +567,20 @@ def _claim_correction() -> UserAlbumArt | None:
 
 
 def _resolve_correction(row: UserAlbumArt) -> tuple[ArtResult, str | None]:
-    """Live resolution of a user's correction: a known release-group goes straight to
-    Cover Art Archive, otherwise the (corrected) text is searched. Never raises."""
-    if not row.release_group_mbid:
+    """Live resolution of a user's correction: a known release-group or release goes
+    straight to Cover Art Archive, otherwise the (corrected) text is searched. Never raises."""
+    if not (row.release_group_mbid or row.release_mbid):
         result, _, error_code = _resolve(
-            row.search_artist or row.artist, row.search_album or row.album
+            row.search_artist or row.artist,
+            row.search_album or row.album,
+            use_scrobble_mbid=False,  # the user gave different text: don't second-guess it
         )
         return result, error_code
     try:
-        image_url = _cover_art_url(row.release_group_mbid)
+        if row.release_mbid:
+            image_url = _cover_art_url(row.release_mbid, "release")
+        else:
+            image_url = _cover_art_url(row.release_group_mbid)
     except Exception as err:  # noqa: BLE001 - any upstream failure is recorded on the row
         log.warning("Corrected art lookup failed for %r/%r: %s", row.artist, row.album, err)
         return ArtResult("error"), type(err).__name__
@@ -540,7 +594,7 @@ def resolve_one_correction() -> bool:
     if row is None:
         return False
     start = time.perf_counter()
-    source = "mbid" if row.release_group_mbid else "search"
+    source = "release_mbid" if row.release_mbid else "mbid" if row.release_group_mbid else "search"
     result, error_code = _resolve_correction(row)
     content_type = None
     if result.status == "found":
