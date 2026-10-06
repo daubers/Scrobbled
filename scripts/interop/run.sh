@@ -6,7 +6,14 @@ here="$(cd "$(dirname "$0")" && pwd)"
 compose="$here/compose.sh"
 keep=0; [ "${1:-}" = "--keep" ] && keep=1
 
-cleanup() { [ "$keep" = 1 ] || "$compose" down -v --remove-orphans >/dev/null 2>&1; }
+cleanup() {
+  [ "$keep" = 1 ] && return 0
+  "$compose" down -v --remove-orphans --rmi local >/dev/null 2>&1
+  # Per-run api/ui images (tagged with SCROBBLER_IMAGE_TAG) would otherwise pile up
+  [ -n "${SCROBBLER_IMAGE_TAG:-}" ] && "$compose" config --images 2>/dev/null \
+    | grep ":${SCROBBLER_IMAGE_TAG}$" | xargs -r docker rmi >/dev/null 2>&1
+  return 0
+}
 trap cleanup EXIT
 
 "$compose" down -v --remove-orphans >/dev/null 2>&1

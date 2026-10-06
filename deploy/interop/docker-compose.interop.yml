@@ -18,11 +18,10 @@ x-federation: &federation
   FEDERATION_INSECURE_TESTING: "1"
   UI_BASE_URL: https://scrobble.test
 
+# Docker picks the network's subnet, so concurrent runs can't collide on one. GoToSocial
+# is therefore told to trust any private range rather than one specific /24.
 networks:
   fedi:
-    ipam:
-      config:
-        - subnet: ${INTEROP_SUBNET:-172.30.0.0/24}
 
 services:
   db:
@@ -63,9 +62,9 @@ services:
       GTS_PORT: "80"
       GTS_DB_TYPE: sqlite
       GTS_DB_ADDRESS: /gotosocial/storage/sqlite.db
-      GTS_HTTP_CLIENT_ALLOW_IPS: ${INTEROP_SUBNET:-172.30.0.0/24}  # let it reach Scrobbler on this network
+      GTS_HTTP_CLIENT_ALLOW_IPS: ${INTEROP_PRIVATE_RANGES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}  # let it reach Scrobbler on this network
       GTS_HTTP_CLIENT_TLS_INSECURE_SKIP_VERIFY: "true"  # Caddy's throwaway certificate
-      GTS_TRUSTED_PROXIES: ${INTEROP_SUBNET:-172.30.0.0/24}
+      GTS_TRUSTED_PROXIES: ${INTEROP_PRIVATE_RANGES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
       GTS_ACCOUNTS_REGISTRATION_OPEN: "false"
       GTS_LOG_LEVEL: ${GTS_LOG_LEVEL:-info}
     sysctls:
