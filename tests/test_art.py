@@ -1,6 +1,7 @@
 import json
 import pathlib
 import threading
+import time
 import urllib.parse
 from datetime import UTC, datetime, timedelta
 
@@ -9,7 +10,8 @@ from werkzeug.serving import make_server
 
 from scrobbler.extensions import db
 from scrobbler.models import AlbumArt
-from scrobbler.services import art
+from scrobbler.services import art, scrobbles
+from scrobbler.services.scrobbles import TrackInput
 
 # Canned release-group matches, keyed by a substring of the Lucene search query we send.
 _RELEASE_GROUPS = {
@@ -422,3 +424,160 @@ def test_endpoint_counts_served(client, auth, art_config, metric_delta):
     art.resolve_one_pending()
     assert client.get(url, headers=auth).status_code == 200
     assert served.delta == 1
+
+
+# --- per-user overrides (service + worker) ----------------------------------------------
+
+BASE = int(time.time()) - 3600
+JPEG = b"\xff\xd8\xff\xe0my-own-art"
+
+
+def override(user, artist, album):
+    return art.get_override(user.id, artist, album)
+
+
+def scrobble_album(user, artist, album, count=1, base=None):
+    scrobbles.submit_scrobbles(
+        user,
+        None,
+        [
+            TrackInput(artist=artist, track=f"t{i}", album=album, timestamp=(base or BASE) + i)
+            for i in range(count)
+        ],
+    )
+
+
+def test_sniff_image_type():
+    assert art.sniff_image_type(JPEG) == "image/jpeg"
+    assert art.sniff_image_type(b"\x89PNG\r\n\x1a\n....") == "image/png"
+    assert art.sniff_image_type(b"RIFF\x00\x00\x00\x00WEBPVP8 ") == "image/webp"
+    with pytest.raises(art.UnsupportedImage):
+        art.sniff_image_type(b"GIF89a")
+
+
+def test_save_upload_stores_the_file_and_replaces_it(art_config, user):
+    art.save_upload(user.id, "Nobody", "Nothing", JPEG, "image/jpeg")
+    first = override(user, "nobody", "NOTHING")  # case-insensitive
+    assert (first.kind, first.status, first.content_type) == ("upload", "found", "image/jpeg")
+    assert art.read_override_file(first) == JPEG
+    art.save_upload(user.id, "Nobody", "Nothing", b"\x89PNG\r\n\x1a\nnew", "image/png")
+    second = override(user, "Nobody", "Nothing")
+    assert second.id == first.id
+    assert art.read_override_file(second).endswith(b"new")
+    assert second.content_type == "image/png"
+
+
+def test_overrides_are_per_user(art_config, user, make_user):
+    other = make_user(username="mallory")
+    art.save_upload(user.id, "Nobody", "Nothing", JPEG, "image/jpeg")
+    assert override(other, "Nobody", "Nothing") is None
+
+
+def test_delete_override_removes_row_and_file(art_config, user):
+    art.save_upload(user.id, "Nobody", "Nothing", JPEG, "image/jpeg")
+    row_id = override(user, "Nobody", "Nothing").id
+    assert art.delete_override(user.id, "Nobody", "Nothing") is True
+    assert override(user, "Nobody", "Nothing") is None
+    assert not art._override_path(row_id).exists()
+    assert art.delete_override(user.id, "Nobody", "Nothing") is False
+
+
+def test_retry_requeues_failures_only(art_config):
+    insert("A", "Failed", "not_found")
+    insert("A", "Fine", "found")
+    assert art.retry("A", "Failed") is True
+    assert row("A", "Failed").status == "pending"
+    assert art.retry("A", "Fine") is False
+    assert art.retry("Brand", "New") is True
+    assert row("Brand", "New").status == "pending"
+
+
+def test_correction_by_mbid_is_resolved_by_the_worker(art_config, user, metric_delta):
+    resolved = metric_delta(
+        "scrobbler_art_correction_resolutions_total", input="mbid", result="found"
+    )
+    wait = metric_delta("scrobbler_art_correction_wait_seconds_count")
+    art.request_correction(user.id, "Radiohead", "Inrainbows", None, None, "rg-found")
+    assert override(user, "Radiohead", "Inrainbows").status == "pending"
+    assert art.resolve_one_pending() is True
+    fixed = override(user, "Radiohead", "Inrainbows")
+    assert (fixed.status, fixed.content_type) == ("found", "image/jpeg")
+    assert art.read_override_file(fixed) == b"\xff\xd8\xff\xe0fake-jpeg-bytes"
+    assert (resolved.delta, wait.delta) == (1, 1)
+
+
+def test_correction_by_search_text_is_resolved_by_the_worker(art_config, user, metric_delta):
+    resolved = metric_delta(
+        "scrobbler_art_correction_resolutions_total", input="search", result="found"
+    )
+    art.request_correction(user.id, "Radiohead", "Inrainbows", "Radiohead", "In Rainbows", None)
+    art.resolve_one_pending()
+    assert override(user, "Radiohead", "Inrainbows").status == "found"
+    assert resolved.delta == 1
+
+
+def test_correction_that_finds_nothing_is_an_error_on_the_override(art_config, user, metric_delta):
+    nothing = metric_delta(
+        "scrobbler_art_correction_resolutions_total", input="search", result="not_found"
+    )
+    art.request_correction(user.id, "Nobody", "Nothing", "Nobody", "Still Nothing", None)
+    art.resolve_one_pending()
+    failed = override(user, "Nobody", "Nothing")
+    assert (failed.status, failed.error_code) == ("error", "NotFound")
+    assert nothing.delta == 1
+
+
+def test_correction_with_a_failing_upstream_records_the_error(art_config, user):
+    art.request_correction(user.id, "Someone", "Boom", None, None, "rg-boom")
+    art.resolve_one_pending()
+    failed = override(user, "Someone", "Boom")
+    assert (failed.status, failed.error_code) == ("error", "HTTPError")
+
+
+def test_worker_resolves_corrections_before_the_global_queue(art_config, user):
+    art.want("Radiohead", "In Rainbows")
+    art.request_correction(user.id, "X", "Y", None, None, "rg-found")
+    art.resolve_one_pending()
+    assert override(user, "X", "Y").status == "found"
+    assert row("Radiohead", "In Rainbows").status == "pending"
+
+
+def test_failures_lists_only_the_users_failed_albums(art_config, user, make_user):
+    other = make_user(username="mallory")
+    scrobble_album(user, "A", "Missing", count=3)
+    scrobble_album(user, "A", "Fine", count=1)
+    scrobble_album(user, "A", "Unlooked", count=1)
+    scrobble_album(other, "B", "Theirs", count=1)
+    insert("A", "Missing", "not_found")
+    insert("A", "Fine", "found")
+    insert("B", "Theirs", "error")
+    items, total = art.list_failures(user.id, 1, 50)
+    assert total == 1
+    assert [(i["artist"], i["album"], i["scrobbles"], i["status"]) for i in items] == [
+        ("A", "Missing", 3, "not_found")
+    ]
+    assert items[0]["override"] is None
+
+
+def test_failures_drops_fixed_albums_and_keeps_failed_corrections(art_config, user):
+    scrobble_album(user, "A", "Uploaded")
+    scrobble_album(user, "A", "Wrong", base=BASE + 500)
+    insert("A", "Uploaded", "not_found")
+    insert("A", "Wrong", "not_found")
+    art.save_upload(user.id, "A", "Uploaded", JPEG, "image/jpeg")
+    art.request_correction(user.id, "A", "Wrong", None, None, "rg-boom")
+    art.resolve_one_pending()
+    items, total = art.list_failures(user.id, 1, 50)
+    assert total == 1
+    assert items[0]["album"] == "Wrong"
+    assert (items[0]["override"]["status"], items[0]["override"]["kind"]) == ("error", "correction")
+
+
+def test_failures_paginates_most_scrobbled_first(art_config, user):
+    for i, count in enumerate((1, 3, 2)):
+        scrobble_album(user, "A", f"Album {i}", count=count, base=BASE + i * 100)
+        insert("A", f"Album {i}", "not_found")
+    items, total = art.list_failures(user.id, 1, 2)
+    assert (total, [i["album"] for i in items]) == (3, ["Album 1", "Album 2"])
+    items, _ = art.list_failures(user.id, 2, 2)
+    assert [i["album"] for i in items] == ["Album 0"]

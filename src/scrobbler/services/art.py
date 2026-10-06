@@ -29,12 +29,12 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from flask import current_app
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 
 from scrobbler import metrics
 from scrobbler.extensions import db
-from scrobbler.models import AlbumArt
+from scrobbler.models import AlbumArt, Scrobble, UserAlbumArt
 
 log = logging.getLogger(__name__)
 
@@ -266,6 +266,215 @@ def fetch_image(image_url: str) -> ImageBytes:
         raise ArtFetchFailed(str(err)) from err
 
 
+# --- Per-user overrides --------------------------------------------------------------
+#
+# A user's own art for an album (an upload, or a manual correction the worker resolves)
+# beats the global cache for that user only. Like the rest of the web path, nothing here
+# touches the network: a correction is just a queued row.
+
+IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
+
+class UnsupportedImage(Exception):
+    """The bytes aren't a JPEG, PNG or WebP image."""
+
+
+def sniff_image_type(data: bytes) -> str:
+    """The image's content type from its magic bytes. Raises UnsupportedImage."""
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    raise UnsupportedImage
+
+
+def _override_path(row_id: int) -> Path:
+    return Path(current_app.config["ART_STORAGE_DIR"]) / "user" / str(row_id)
+
+
+def _override_key(user_id: int, artist: str, album: str):
+    return and_(
+        UserAlbumArt.user_id == user_id,
+        func.lower(UserAlbumArt.artist) == artist.lower(),
+        func.lower(UserAlbumArt.album) == album.lower(),
+    )
+
+
+def get_override(user_id: int, artist: str, album: str) -> UserAlbumArt | None:
+    return db.session.scalar(select(UserAlbumArt).where(_override_key(user_id, artist, album)))
+
+
+def read_override_file(row: UserAlbumArt) -> bytes | None:
+    try:
+        return _override_path(row.id).read_bytes()
+    except FileNotFoundError:
+        return None
+
+
+def _upsert_override(user_id: int, artist: str, album: str, **values) -> int:
+    now = datetime.now(UTC)
+    stmt = insert(UserAlbumArt).values(
+        user_id=user_id, artist=artist, album=album, created_at=now, updated_at=now, **values
+    )
+    stmt = stmt.on_conflict_do_update(
+        index_elements=[
+            UserAlbumArt.user_id,
+            func.lower(UserAlbumArt.artist),
+            func.lower(UserAlbumArt.album),
+        ],
+        set_={**values, "updated_at": now},
+    ).returning(UserAlbumArt.id)
+    row_id = db.session.execute(stmt).scalar_one()
+    db.session.commit()
+    return row_id
+
+
+def save_upload(user_id: int, artist: str, album: str, data: bytes, content_type: str) -> None:
+    """Store an uploaded image as the user's art. The caller has already validated it."""
+    path_id = _upsert_override(
+        user_id,
+        artist,
+        album,
+        kind="upload",
+        status="found",
+        content_type=content_type,
+        search_artist=None,
+        search_album=None,
+        release_group_mbid=None,
+        error_code=None,
+    )
+    path = _override_path(path_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)
+
+
+def request_correction(
+    user_id: int,
+    artist: str,
+    album: str,
+    search_artist: str | None,
+    search_album: str | None,
+    release_group_mbid: str | None,
+) -> None:
+    """Queue a corrected lookup (different search text, or a known MusicBrainz
+    release-group) for the worker. A fast, network-free write."""
+    _upsert_override(
+        user_id,
+        artist,
+        album,
+        kind="correction",
+        status="pending",
+        content_type=None,
+        search_artist=search_artist,
+        search_album=search_album,
+        release_group_mbid=release_group_mbid,
+        error_code=None,
+    )
+    metrics.art_override_actions_total.labels("correction_requested").inc()
+
+
+def delete_override(user_id: int, artist: str, album: str) -> bool:
+    """Drops the user's override (and its image). False if there wasn't one."""
+    row = get_override(user_id, artist, album)
+    if row is None:
+        return False
+    row_id = row.id
+    db.session.execute(delete(UserAlbumArt).where(UserAlbumArt.id == row_id))
+    db.session.commit()
+    _override_path(row_id).unlink(missing_ok=True)
+    metrics.art_override_actions_total.labels("override_deleted").inc()
+    return True
+
+
+def retry(artist: str, album: str) -> bool:
+    """Ask the worker to look an album up again from scratch. False if there's nothing
+    to retry (it's already found, or already waiting)."""
+    row = get_cached(artist, album)
+    if row is None:
+        want(artist, album)
+    elif row.status in ("not_found", "error"):
+        requeue(row)
+    else:
+        return False
+    metrics.art_override_actions_total.labels("retry_requested").inc()
+    return True
+
+
+def list_failures(user_id: int, page: int, limit: int) -> tuple[list[dict], int]:
+    """One page of the user's scrobbled albums that have no art (the lookup failed) or
+    whose manual correction hasn't worked, most-scrobbled first. Returns (items, total)."""
+    albums = (
+        select(
+            func.min(Scrobble.artist).label("artist"),
+            func.min(Scrobble.album).label("album"),
+            func.count().label("scrobbles"),
+        )
+        .where(Scrobble.user_id == user_id, Scrobble.album.is_not(None), Scrobble.album != "")
+        .group_by(func.lower(Scrobble.artist), func.lower(Scrobble.album))
+        .subquery()
+    )
+    query = (
+        select(albums.c.artist, albums.c.album, albums.c.scrobbles, AlbumArt, UserAlbumArt)
+        .select_from(albums)
+        .outerjoin(
+            AlbumArt,
+            and_(
+                func.lower(AlbumArt.artist) == func.lower(albums.c.artist),
+                func.lower(AlbumArt.album) == func.lower(albums.c.album),
+            ),
+        )
+        .outerjoin(
+            UserAlbumArt,
+            and_(
+                UserAlbumArt.user_id == user_id,
+                func.lower(UserAlbumArt.artist) == func.lower(albums.c.artist),
+                func.lower(UserAlbumArt.album) == func.lower(albums.c.album),
+            ),
+        )
+        .where(
+            or_(
+                UserAlbumArt.status.in_(("pending", "error")),
+                and_(
+                    UserAlbumArt.id.is_(None),
+                    AlbumArt.status.in_(("not_found", "error")),
+                ),
+            )
+        )
+    )
+    total = db.session.scalar(select(func.count()).select_from(query.subquery()))
+    rows = db.session.execute(
+        query.order_by(albums.c.scrobbles.desc(), albums.c.artist, albums.c.album)
+        .limit(limit)
+        .offset((page - 1) * limit)
+    ).all()
+    items = [
+        {
+            "artist": artist,
+            "album": album,
+            "scrobbles": scrobbles,
+            "status": cached.status if cached else "pending",
+            "error_code": cached.error_code if cached else None,
+            "checked_at": cached.checked_at if cached else None,
+            "override": (
+                {
+                    "kind": override.kind,
+                    "status": override.status,
+                    "error_code": override.error_code,
+                    "search_artist": override.search_artist,
+                    "search_album": override.search_album,
+                    "release_group_mbid": override.release_group_mbid,
+                }
+                if override
+                else None
+            ),
+        }
+        for artist, album, scrobbles, cached, override in rows
+    ]
+    return items, total
+
+
 # --- Worker --------------------------------------------------------------------------
 
 
@@ -295,10 +504,79 @@ def _claim_pending() -> AlbumArt | None:
     return row
 
 
+def _claim_correction() -> UserAlbumArt | None:
+    row = db.session.scalar(
+        select(UserAlbumArt)
+        .where(UserAlbumArt.status == "pending")
+        .order_by(UserAlbumArt.updated_at)
+        .limit(1)
+        .with_for_update(skip_locked=True)
+    )
+    if row is None:
+        db.session.rollback()
+    return row
+
+
+def _resolve_correction(row: UserAlbumArt) -> tuple[ArtResult, str | None]:
+    """Live resolution of a user's correction: a known release-group goes straight to
+    Cover Art Archive, otherwise the (corrected) text is searched. Never raises."""
+    if not row.release_group_mbid:
+        result, _, error_code = _resolve(
+            row.search_artist or row.artist, row.search_album or row.album
+        )
+        return result, error_code
+    try:
+        image_url = _cover_art_url(row.release_group_mbid)
+    except Exception as err:  # noqa: BLE001 - any upstream failure is recorded on the row
+        log.warning("Corrected art lookup failed for %r/%r: %s", row.artist, row.album, err)
+        return ArtResult("error"), type(err).__name__
+    return ArtResult("found" if image_url else "not_found", image_url), None
+
+
+def resolve_one_correction() -> bool:
+    """Resolve one user's pending manual correction, saving the image on success.
+    Returns True if it processed one."""
+    row = _claim_correction()
+    if row is None:
+        return False
+    start = time.perf_counter()
+    source = "mbid" if row.release_group_mbid else "search"
+    result, error_code = _resolve_correction(row)
+    content_type = None
+    if result.status == "found":
+        try:
+            image = fetch_image(result.image_url)
+            content_type = image.content_type.split(";")[0].strip()
+            if content_type not in IMAGE_TYPES:
+                content_type = "image/jpeg"
+            path = _override_path(row.id)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(image.body)
+        except ArtFetchFailed as err:
+            log.warning("Corrected art download failed for %r/%r: %s", row.artist, row.album, err)
+            result, error_code = ArtResult("error"), "ArtFetchFailed"
+    elif result.status == "not_found":
+        error_code = "NotFound"
+    metrics.art_correction_resolutions_total.labels(source, result.status).inc()
+    metrics.art_resolutions_total.labels("override", result.status).inc()
+    now = datetime.now(UTC)
+    metrics.art_correction_wait_seconds.observe((now - row.updated_at).total_seconds())
+    row.status = "found" if result.status == "found" else "error"
+    row.content_type = content_type
+    row.error_code = error_code
+    row.updated_at = now
+    db.session.commit()
+    metrics.art_override_worker_seconds.observe(time.perf_counter() - start)
+    return True
+
+
 def resolve_one_pending() -> bool:
     """Worker task: resolve one row that's pending or due for a recheck, downloading
-    and saving its image bytes when found. Returns True if it processed a row (call
-    again immediately), False if there was nothing to do."""
+    and saving its image bytes when found. A user's manual correction goes first.
+    Returns True if it processed a row (call again immediately), False if there was
+    nothing to do."""
+    if resolve_one_correction():
+        return True
     row = _claim_pending()
     if row is None:
         return False

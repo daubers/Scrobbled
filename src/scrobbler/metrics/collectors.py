@@ -13,6 +13,8 @@ from sqlalchemy.pool import NullPool
 from scrobbler.metrics import COLLECTED
 
 ART_STATUSES = ("pending", "found", "not_found", "error")
+ART_OVERRIDE_KINDS = ("upload", "correction")
+ART_OVERRIDE_STATUSES = ("pending", "found", "error")
 ACTIVE_WINDOWS = {"1h": "1 hour", "24h": "24 hours", "7d": "7 days"}
 
 
@@ -56,6 +58,25 @@ class DatabaseStatsCollector(Collector):
                     "FROM album_art WHERE status = 'pending'"
                 )
             ).scalar_one()
+            overrides = {
+                (kind, status): count
+                for kind, status, count in conn.execute(
+                    text("SELECT kind, status, count(*) FROM user_album_art GROUP BY kind, status")
+                ).all()
+            }
+            override_oldest = conn.execute(
+                text(
+                    "SELECT coalesce(extract(epoch FROM now() - min(updated_at)), 0) "
+                    "FROM user_album_art WHERE status = 'pending'"
+                )
+            ).scalar_one()
+            unresolved = conn.execute(
+                text(
+                    "SELECT count(*) FROM album_art a WHERE a.status IN ('not_found', 'error') "
+                    "AND NOT EXISTS (SELECT 1 FROM user_album_art u WHERE u.status = 'found' "
+                    "AND lower(u.artist) = lower(a.artist) AND lower(u.album) = lower(a.album))"
+                )
+            ).scalar_one()
         return {
             "users": users,
             "active": active,
@@ -63,6 +84,13 @@ class DatabaseStatsCollector(Collector):
             "import_jobs": {s: import_jobs.get(s, 0) for s in ("pending", "running")},
             "art_cache": {s: art_cache.get(s, 0) for s in ART_STATUSES},
             "art_oldest_pending": float(oldest_pending),
+            "art_overrides": {
+                (kind, status): overrides.get((kind, status), 0)
+                for kind in ART_OVERRIDE_KINDS
+                for status in ART_OVERRIDE_STATUSES
+            },
+            "art_override_oldest_pending": float(override_oldest),
+            "art_unresolved": unresolved,
         }
 
     def values(self) -> dict | None:
@@ -107,4 +135,22 @@ class DatabaseStatsCollector(Collector):
             COLLECTED["art_oldest_pending"],
             "Age of the longest-waiting album art request (0 if none pending)",
             value=values["art_oldest_pending"],
+        )
+        overrides = GaugeMetricFamily(
+            COLLECTED["art_overrides"],
+            "User album art overrides by kind and status",
+            labels=["kind", "status"],
+        )
+        for (kind, status), count in values["art_overrides"].items():
+            overrides.add_metric([kind, status], count)
+        yield overrides
+        yield GaugeMetricFamily(
+            COLLECTED["art_override_oldest_pending"],
+            "Age of the longest-waiting manual art correction (0 if none pending)",
+            value=values["art_override_oldest_pending"],
+        )
+        yield GaugeMetricFamily(
+            COLLECTED["art_unresolved"],
+            "Albums with no art that no user has fixed",
+            value=values["art_unresolved"],
         )
