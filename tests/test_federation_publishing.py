@@ -50,7 +50,7 @@ def test_publish_creates_a_post_and_a_create_activity(fed_ctx, user, metric_delt
     assert activity.document["object"]["type"] == "Note"
     assert activity.document["object"]["content"] == "<p>312 plays</p>"
     assert activity.document["object"]["contentMap"] == {"en": "<p>312 plays</p>"}
-    assert activity.document["object"]["tag"] == [{"type": "Hashtag", "name": "#Scrobbler"}]
+    assert activity.document["object"]["tag"] == [{"type": "Hashtag", "name": "#Scrobbled"}]
     assert activity.public is False  # followers-only, the default
 
 

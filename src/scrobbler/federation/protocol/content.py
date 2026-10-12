@@ -7,7 +7,7 @@ line of a post is its own paragraph.
 
 import html
 
-HASHTAG = "Scrobbler"
+HASHTAG = "Scrobbled"
 
 
 def escape(text: str) -> str:

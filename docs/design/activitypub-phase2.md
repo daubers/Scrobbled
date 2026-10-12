@@ -5,12 +5,12 @@
 Where this differed from the plan:
 
 - **httpcore instead of httpx.** httpcore is the transport layer underneath httpx, and it publicly supports the custom network backend that connecting to a pre-checked address needs.
-- **No in-process test with two Scrobbler instances.** Scrobbler can't initiate follows yet, so one instance has nothing to send the other. Scripted remote accounts over real HTTP cover the same paths, and GoToSocial is the real second server.
+- **No in-process test with two Scrobbled instances.** Scrobbled can't initiate follows yet, so one instance has nothing to send the other. Scripted remote accounts over real HTTP cover the same paths, and GoToSocial is the real second server.
 - **Undo of a Block.** Unblocking needed it: GoToSocial otherwise keeps the block.
 
 This implements phase 2 of [activitypub.md](activitypub.md), building on [phase 1](activitypub-phase1.md).
 
-**Outcome:** people on Mastodon, GoToSocial and similar servers can follow a user who shares. Follows are accepted automatically, or wait for the user's approval if they've turned it on. The user sees their followers and can approve, decline, remove or block them. Scrobbler signs everything it sends and checks the signature on everything it receives. Posts come in phase 3; this phase makes the relationship work end to end.
+**Outcome:** people on Mastodon, GoToSocial and similar servers can follow a user who shares. Follows are accepted automatically, or wait for the user's approval if they've turned it on. The user sees their followers and can approve, decline, remove or block them. Scrobbled signs everything it sends and checks the signature on everything it receives. Posts come in phase 3; this phase makes the relationship work end to end.
 
 Everything below is inside `scrobbler.federation`, and the boundary tests keep holding. Federation off still means nothing is registered.
 
@@ -56,7 +56,7 @@ Everything below is inside `scrobbler.federation`, and the boundary tests keep h
   - At most 3 redirects, each checked the same way.
   - Response bodies are capped at 1 MB.
   - Timeouts: 10s to connect and 20s to read.
-  - A `User-Agent` of `Scrobbler/<version> (+<base url>)`.
+  - A `User-Agent` of `Scrobbled/<version> (+<base url>)`.
   - `signed_get(url, as_actor)`, which signs with the instance actor by default so "authorized fetch" servers answer; and `signed_post(inbox, activity, as_user)`.
 - **`FEDERATION_INSECURE_TESTING=1`** is **for automated tests only**. It allows `http://` and private addresses. It's refused unless the domain ends in `.test` (a reserved top-level domain) and logs a warning every minute while on. It exists so CI can federate with GoToSocial on a private Docker network.
 - **`remote.py`**: the remote-actor cache.
@@ -178,12 +178,12 @@ Everything below is inside `scrobbler.federation`, and the boundary tests keep h
   - bad signatures rejected with the right reason
   - a blocked domain
   - turning sharing off
-- **A real peer in CI**: a new `federation-interop` job runs Scrobbler (API, worker and UI) and a GoToSocial container on one Docker network. The hosts are `scrobble.test` and `gts.test`, over HTTP, with each side's test-only settings. A script:
+- **A real peer in CI**: a new `federation-interop` job runs Scrobbled (API, worker and UI) and a GoToSocial container on one Docker network. The hosts are `scrobble.test` and `gts.test`, over HTTP, with each side's test-only settings. A script:
   1. creates a GoToSocial user with its admin CLI,
   2. gets a user token by driving GoToSocial's sign-in and OAuth screens with plain HTTP (this part gets a short spike first, since GoToSocial has no password grant),
   3. follows `@alice@scrobble.test`, and checks it's accepted,
   4. unfollows, and checks it's gone,
-  5. with manual approval on, checks the request waits until approved through Scrobbler's API.
+  5. with manual approval on, checks the request waits until approved through Scrobbled's API.
 
   The job posts to ntfy like every other job. It doesn't run on pull requests from forks.
 - **Manual pass before merging**: follow and unfollow from a real Mastodon account through a tunnel.
@@ -210,5 +210,5 @@ Everything below is inside `scrobbler.federation`, and the boundary tests keep h
 
 - **Licences**:
   - `httpx` is BSD-3-Clause and `cryptography` is Apache-2.0/BSD.
-  - GoToSocial is AGPL, but it runs only as a separate container in CI to test against. Nothing of it is linked into, or shipped with, Scrobbler, so it has no effect on Scrobbler's licence.
+  - GoToSocial is AGPL, but it runs only as a separate container in CI to test against. Nothing of it is linked into, or shipped with, Scrobbled, so it has no effect on Scrobbled's licence.
 - **Scale**: this is the biggest phase, and signatures plus safe outbound HTTP are where the risk lies. They come first and have the most thorough tests.

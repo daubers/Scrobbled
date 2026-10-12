@@ -29,7 +29,7 @@ class Config:
     START_METRICS_SERVER = os.environ.get("START_METRICS_SERVER", "0") == "1"
 
     # OpenAPI document and docs (flask-smorest)
-    API_TITLE = "Scrobbler API"
+    API_TITLE = "Scrobbled API"
     API_VERSION = "v1"
     OPENAPI_VERSION = "3.1.0"
     OPENAPI_URL_PREFIX = "/api"

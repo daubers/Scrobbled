@@ -78,14 +78,14 @@ jobs:
         run: for f in deploy/grafana/dashboards/*.json; do python3 -m json.tool "$f" > /dev/null; done
 
   federation-interop:
-    # A real GoToSocial server follows a Scrobbler user (see scripts/interop/run.sh).
+    # A real GoToSocial server follows a Scrobbled user (see scripts/interop/run.sh).
     # Not for pull requests from forks: it runs containers on the runner's Docker.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Scrobbler <-> GoToSocial
+      - name: Scrobbled <-> GoToSocial
         env:
           # Own compose project, network and image tags, so concurrent runs can't collide
           INTEROP_PROJECT: interop-${{ github.run_id }}

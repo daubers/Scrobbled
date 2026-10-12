@@ -1,4 +1,4 @@
-# Scrobbler
+# Scrobbled
 
 A self-hosted music scrobbling service. It speaks the **Last.fm (Audioscrobbler 2.0) API**,
 so players and scrobblers that let you set a custom Last.fm server can use it unchanged.

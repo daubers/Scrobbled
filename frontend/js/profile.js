@@ -10,7 +10,7 @@ publicPage();
 
 try {
   const profile = await api(`/federation/profiles/${encodeURIComponent(username)}`, { auth: false });
-  document.title = `${profile.display_name} · Scrobbler`;
+  document.title = `${profile.display_name} · Scrobbled`;
   const copy = h("button", { type: "button", class: "button button-quiet" }, "Copy handle");
   copy.addEventListener("click", async () => {
     try {

@@ -66,7 +66,7 @@ def test_urls_with_credentials_are_refused():
 
 @pytest.fixture
 def local_client():
-    client = Client("Scrobbler/test", insecure_testing=True)
+    client = Client("Scrobbled/test", insecure_testing=True)
     yield client
     client.close()
 
@@ -74,7 +74,7 @@ def local_client():
 def test_get_json_and_user_agent(local_client, remote):
     remote.routes["/doc"] = (200, {}, {"id": "x"})
     assert local_client.get_json(remote.url("/doc")) == {"id": "x"}
-    assert remote.requests[0]["headers"]["User-Agent"] == "Scrobbler/test"
+    assert remote.requests[0]["headers"]["User-Agent"] == "Scrobbled/test"
     assert "application/activity+json" in remote.requests[0]["headers"]["Accept"]
 
 

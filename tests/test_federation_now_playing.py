@@ -151,7 +151,7 @@ def test_post_sent_after_30_seconds(fed_ctx, posting_user):
     activity = db.session.get(FederationActivity, post.activity_id)
     assert activity.activity_type == "Create"
     assert activity.document["object"]["tag"] == [
-        {"type": "Hashtag", "name": "#Scrobbler"},
+        {"type": "Hashtag", "name": "#Scrobbled"},
         {"type": "Hashtag", "name": "#NowPlaying"},
     ]
 

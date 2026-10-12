@@ -1,6 +1,6 @@
 {
   "uid": "scrobbler-federation",
-  "title": "Scrobbler: Federation",
+  "title": "Scrobbled: Federation",
   "description": "ActivityPub: how the fediverse finds and talks to users sharing their listening. Empty unless FEDERATION_ENABLED is on.",
   "tags": [
     "scrobbler"
@@ -28,7 +28,7 @@
         "scrobbler"
       ],
       "asDropdown": true,
-      "title": "Scrobbler",
+      "title": "Scrobbled",
       "includeVars": false
     }
   ],

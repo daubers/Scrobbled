@@ -6,7 +6,7 @@ groups:
         for: 2m
         labels: {severity: critical}
         annotations:
-          summary: Scrobbler API metrics endpoint is down
+          summary: Scrobbled API metrics endpoint is down
           description: Prometheus hasn't been able to scrape {{ $labels.instance }} for 2 minutes.
 
       - alert: HighErrorRate

@@ -1,4 +1,4 @@
-"""Federation interop test: a real GoToSocial account follows a Scrobbler user.
+"""Federation interop test: a real GoToSocial account follows a Scrobbled user.
 
 Runs inside the interop compose network (see deploy/interop/). Standard library only.
 Exits non-zero, with a description, on the first thing that doesn't work.
@@ -164,7 +164,7 @@ def wait_for(description, check, timeout=60):
     fail(f"timed out waiting for: {description}")
 
 
-class Scrobbler:
+class Scrobbled:
     def __init__(self, username="alice", password="interop-password-1"):
         status, body = api(
             "POST",
@@ -185,7 +185,7 @@ class Scrobbler:
                 },
             )
         if status not in (200, 201):
-            fail(f"signing in to Scrobbler: {status} {body}")
+            fail(f"signing in to Scrobbled: {status} {body}")
         self.token = body["token"]
 
     def settings(self, **changes):
@@ -193,7 +193,7 @@ class Scrobbler:
             "PATCH", f"{SCROBBLER_API}/federation/settings", self.token, body=changes
         )
         if status != 200:
-            fail(f"changing Scrobbler settings: {status} {body}")
+            fail(f"changing Scrobbled settings: {status} {body}")
         return body
 
     def followers(self, state=None):
@@ -275,8 +275,8 @@ def main():
     step("Getting a GoToSocial access token")
     gts = GoToSocial(gotosocial_token())
 
-    step("Alice starts sharing on Scrobbler")
-    alice = Scrobbler()
+    step("Alice starts sharing on Scrobbled")
+    alice = Scrobbled()
     alice.settings(
         enabled=True,
         display_name="Alice Interop",
@@ -294,14 +294,14 @@ def main():
     step("Follow: GoToSocial sees it accepted (our signed Accept verified)")
     gts.follow(account_id)
     wait_for("GoToSocial to be following", lambda: gts.relationship(account_id)["following"])
-    followers = wait_for("Scrobbler to list the follower", lambda: alice.followers("accepted"))
-    print(f"   Scrobbler follower: {followers[0]['handle']}")
+    followers = wait_for("Scrobbled to list the follower", lambda: alice.followers("accepted"))
+    print(f"   Scrobbled follower: {followers[0]['handle']}")
     if followers[0]["handle"] != "@gtsuser@gts.test":
         fail(f"unexpected follower {followers[0]['handle']}")
 
-    step("Unfollow: Scrobbler drops the follower (their signed Undo verified)")
+    step("Unfollow: Scrobbled drops the follower (their signed Undo verified)")
     gts.unfollow(account_id)
-    wait_for("Scrobbler to drop the follower", lambda: not alice.followers())
+    wait_for("Scrobbled to drop the follower", lambda: not alice.followers())
 
     step("Manual approval: the follow waits as a request")
     alice.settings(manually_approves_followers=True)
@@ -309,7 +309,7 @@ def main():
     wait_for(
         "GoToSocial to show a pending request", lambda: gts.relationship(account_id)["requested"]
     )
-    pending = wait_for("Scrobbler to list the request", lambda: alice.followers("pending"))
+    pending = wait_for("Scrobbled to list the request", lambda: alice.followers("pending"))
     if gts.relationship(account_id)["following"]:
         fail("following before being approved")
 
@@ -317,7 +317,7 @@ def main():
     alice.act(pending[0]["id"], "approve")
     wait_for("GoToSocial to be following", lambda: gts.relationship(account_id)["following"])
 
-    step("Remove the follower: Scrobbler drops them and sends a Reject")
+    step("Remove the follower: Scrobbled drops them and sends a Reject")
     alice.act(alice.followers()[0]["id"], "remove")
     if alice.followers():
         fail("the follower is still listed after removal")
@@ -338,7 +338,7 @@ def main():
 
     step("Block a follower: GoToSocial drops the follow (it honours Block)")
     gts.follow(account_id)
-    pending = wait_for("Scrobbler to list the request", lambda: alice.followers("pending"))
+    pending = wait_for("Scrobbled to list the request", lambda: alice.followers("pending"))
     alice.act(pending[0]["id"], "approve")
     wait_for("GoToSocial to be following", lambda: gts.relationship(account_id)["following"])
     alice.act(alice.followers()[0]["id"], "block")
@@ -358,7 +358,7 @@ def main():
 
     step("Decline a request: GoToSocial's request is withdrawn")
     gts.follow(account_id)
-    pending = wait_for("Scrobbler to list the request", lambda: alice.followers("pending"))
+    pending = wait_for("Scrobbled to list the request", lambda: alice.followers("pending"))
     alice.act(pending[0]["id"], "decline")
     wait_for(
         "GoToSocial's request to go away",
@@ -385,7 +385,7 @@ def check_posts():
     profile field GoToSocial has cached is updated by the periodic push."""
     step("Getting a GoToSocial access token")
     gts = GoToSocial(gotosocial_token())
-    alice = Scrobbler()  # register-or-login: the same account main() set up
+    alice = Scrobbled()  # register-or-login: the same account main() set up
     account = gts.resolve("@alice@scrobble.test")
     account_id = account["id"]
     if not gts.relationship(account_id)["following"]:

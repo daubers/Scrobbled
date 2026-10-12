@@ -1,7 +1,7 @@
 {
   "uid": "scrobbler-api-overview",
-  "title": "Scrobbler: API overview",
-  "description": "Rate, errors and duration for every endpoint of the Scrobbler API.",
+  "title": "Scrobbled: API overview",
+  "description": "Rate, errors and duration for every endpoint of the Scrobbled API.",
   "tags": [
     "scrobbler"
   ],
@@ -57,7 +57,7 @@
         "scrobbler"
       ],
       "asDropdown": true,
-      "title": "Scrobbler",
+      "title": "Scrobbled",
       "includeVars": false
     }
   ],

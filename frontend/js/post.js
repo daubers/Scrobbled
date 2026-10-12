@@ -15,7 +15,7 @@ try {
     `/federation/profiles/${encodeURIComponent(username)}/posts/${encodeURIComponent(postId)}`,
     { auth: false },
   );
-  document.title = `${post.display_name} · Scrobbler`;
+  document.title = `${post.display_name} · Scrobbled`;
   replace(
     root,
     h(

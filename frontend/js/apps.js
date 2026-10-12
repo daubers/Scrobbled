@@ -113,7 +113,7 @@ function renderSetup() {
     h("dt", {}, "Username"),
     h("dd", {}, h("code", {}, user.username)),
     h("dt", {}, "Password"),
-    h("dd", {}, "Your Scrobbler password"),
+    h("dd", {}, "Your Scrobbled password"),
     h("dt", {}, "Key and secret"),
     h("dd", {}, "From one of the apps above"),
     h("dt", {}, "API reference"),

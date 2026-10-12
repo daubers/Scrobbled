@@ -18,7 +18,7 @@ from scrobbler.federation import metrics as fed_metrics
 from scrobbler.federation.models import FederationActivity, FederationPost
 from scrobbler.federation.protocol import addressing, vocab
 
-DEFAULT_TAGS = ("Scrobbler",)
+DEFAULT_TAGS = ("Scrobbled",)
 OUTBOX_PAGE_SIZE = 20
 LISTED_VISIBILITIES = ("public", "unlisted")  # followers-only posts aren't listed unauthenticated
 

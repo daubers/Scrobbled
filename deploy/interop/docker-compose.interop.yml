@@ -1,9 +1,9 @@
-# Federation interop test: Scrobbler and a real GoToSocial server on one private network.
+# Federation interop test: Scrobbled and a real GoToSocial server on one private network.
 #
 #   docker compose -f docker-compose.yml -f deploy/interop/docker-compose.interop.yml up -d --build
 #   ...create the GoToSocial user (see scripts/interop/run.sh), then run the driver.
 #
-# TEST ONLY: GoToSocial runs over plain HTTP and skips TLS verification; Scrobbler is
+# TEST ONLY: GoToSocial runs over plain HTTP and skips TLS verification; Scrobbled is
 # served over HTTPS by a Caddy proxy with a throwaway certificate, and its "insecure
 # testing" switch lets it reach GoToSocial over HTTP on this private network. All on the
 # reserved .test domain. Never use these settings anywhere else.
@@ -62,7 +62,7 @@ services:
       GTS_PORT: "80"
       GTS_DB_TYPE: sqlite
       GTS_DB_ADDRESS: /gotosocial/storage/sqlite.db
-      GTS_HTTP_CLIENT_ALLOW_IPS: ${INTEROP_PRIVATE_RANGES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}  # let it reach Scrobbler on this network
+      GTS_HTTP_CLIENT_ALLOW_IPS: ${INTEROP_PRIVATE_RANGES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}  # let it reach Scrobbled on this network
       GTS_HTTP_CLIENT_TLS_INSECURE_SKIP_VERIFY: "true"  # Caddy's throwaway certificate
       GTS_TRUSTED_PROXIES: ${INTEROP_PRIVATE_RANGES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
       GTS_ACCOUNTS_REGISTRATION_OPEN: "false"

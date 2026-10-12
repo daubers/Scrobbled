@@ -1,6 +1,6 @@
 {
   "uid": "scrobbler-album-art",
-  "title": "Scrobbler: Album Art",
+  "title": "Scrobbled: Album Art",
   "description": "Album art endpoint, background resolver and MusicBrainz / Cover Art Archive upstreams",
   "tags": [
     "scrobbler"
@@ -28,7 +28,7 @@
         "scrobbler"
       ],
       "asDropdown": true,
-      "title": "Scrobbler",
+      "title": "Scrobbled",
       "includeVars": false
     }
   ],

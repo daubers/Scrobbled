@@ -1,4 +1,4 @@
-# Scrobbler web UI: static files served by nginx.
+# Scrobbled web UI: static files served by nginx.
 FROM nginx:1.29-alpine
 LABEL org.opencontainers.image.licenses="BSD-3-Clause"
 ENV API_BASE_URL=http://localhost:5050

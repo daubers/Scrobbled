@@ -60,7 +60,7 @@ def https_server(app, tls_files):
 @pytest.fixture
 def network(https_server, api_app):
     return pylast._Network(
-        name="Scrobbler",
+        name="Scrobbled",
         homepage=f"https://{https_server}",
         ws_server=(https_server, "/2.0/"),
         api_key=api_app.api_key,

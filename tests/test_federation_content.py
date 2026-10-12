@@ -79,18 +79,18 @@ def test_build_content_shape():
         "My week in music: 312 plays",
         "Top artists: 1. Radiohead (48) 2. Björk (31) 3. Portishead (22)",
         "Most played: Reckoner by Radiohead (12 plays)",
-        "#Scrobbler",
+        "#Scrobbled",
     ]
     assert html.startswith("<p><strong>My week in music: 312 plays</strong></p>")
     assert "<ol><li>Radiohead" in html
     assert "<em>Reckoner</em> by Radiohead" in html
-    assert html.endswith("<p>#Scrobbler</p>")
+    assert html.endswith("<p>#Scrobbled</p>")
     assert "<script" not in html  # sanity: nothing unescaped ever reaches the markup
 
 
 def test_build_content_without_any_plays_this_week():
     text, html = build_content(0, [], [])
-    assert text == "My week in music: 0 plays\n#Scrobbler"
+    assert text == "My week in music: 0 plays\n#Scrobbled"
     assert "<ol>" not in html  # no top-artists list when there isn't one
     assert "Most played" not in html
 

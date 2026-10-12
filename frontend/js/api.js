@@ -1,4 +1,4 @@
-// Thin client for the Scrobbler /api/v1 JSON API.
+// Thin client for the Scrobbled /api/v1 JSON API.
 
 const TOKEN_KEY = "scrobbler.token";
 
@@ -77,7 +77,7 @@ export async function api(path, { method = "GET", body, auth = true } = {}) {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError(0, "network", `Can't reach the Scrobbler API at ${apiBase}. Check that it's running.`);
+    throw new ApiError(0, "network", `Can't reach the Scrobbled API at ${apiBase}. Check that it's running.`);
   }
 
   if (response.status === 401 && auth) {
@@ -122,7 +122,7 @@ export function upload(path, formData, onProgress, method = "POST") {
       if (event.lengthComputable) onProgress?.(event.loaded / event.total);
     });
     xhr.addEventListener("error", () =>
-      reject(new ApiError(0, "network", `Can't reach the Scrobbler API at ${apiBase}. Check that it's running.`)),
+      reject(new ApiError(0, "network", `Can't reach the Scrobbled API at ${apiBase}. Check that it's running.`)),
     );
     xhr.addEventListener("load", () => {
       let data = null;

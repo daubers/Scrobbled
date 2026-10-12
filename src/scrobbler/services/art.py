@@ -86,7 +86,7 @@ def _user_agent() -> str:
     from scrobbler import __version__
 
     contact = current_app.config["MUSICBRAINZ_CONTACT"]
-    return f"Scrobbler/{__version__} ( {contact} )"
+    return f"Scrobbled/{__version__} ( {contact} )"
 
 
 _last_musicbrainz_call = 0.0

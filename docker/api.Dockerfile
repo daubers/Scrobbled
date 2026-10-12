@@ -1,4 +1,4 @@
-# Scrobbler API: gunicorn serving the Flask app, metrics on :9100.
+# Scrobbled API: gunicorn serving the Flask app, metrics on :9100.
 FROM ghcr.io/astral-sh/uv:0.7.21 AS uv
 
 FROM python:3.13-slim AS build
