@@ -1,4 +1,4 @@
-/* Vendored from Google Fonts. Doto and Instrument Sans are licensed under the SIL Open Font License 1.1. */
+/* Vendored fonts. Doto, Instrument Sans (from Google Fonts) and Bricolage Grotesque are licensed under the SIL Open Font License 1.1. */
 /* Doto latin-ext */
 @font-face {
   font-family: 'Doto';
@@ -36,4 +36,12 @@
   font-display: swap;
   src: url(instrument-sans-latin.woff2) format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Bricolage Grotesque ExtraBold, the wordmark typeface (SIL Open Font License 1.1, see OFL-bricolage-grotesque.txt). */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url(bricolage-grotesque-latin-800-normal.woff2) format('woff2'), url(bricolage-grotesque-latin-800-normal.woff) format('woff');
 }

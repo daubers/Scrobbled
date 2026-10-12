@@ -24,6 +24,7 @@
 
   --font-ui: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Doto", "Instrument Sans", monospace;
+  --font-brand: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
 
   /* Type scale: a 1.25 ratio on a 16px base */
   --step--1: 0.8rem;
@@ -152,18 +153,19 @@ code {
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
-  font-weight: 700;
+  font-family: var(--font-brand);
+  font-weight: 800;
   font-size: var(--step-1);
+  letter-spacing: -0.02em;
+  text-transform: lowercase;
   text-decoration: none;
 }
 
-/* A small round "power" lamp */
+/* The Scrobbled mark: a record with the tonearm resting on it */
 .brand-mark {
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 50%;
-  background: var(--glow);
-  box-shadow: 0 0 0 3px var(--panel), 0 0 10px 1px color-mix(in srgb, var(--glow) 60%, transparent);
+  width: 2rem;
+  height: 2rem;
+  background: url("../img/scrobbled-mark-simple.svg") center / contain no-repeat;
 }
 
 .site-header nav ul {
@@ -1111,7 +1113,7 @@ input {
   position: relative;
 }
 
-/* No artwork: a plain ring, echoing .brand-mark's small round "lamp" motif */
+/* No artwork: a plain ring, echoing the record in .brand-mark */
 .art-thumb-empty::after {
   content: "";
   position: absolute;
