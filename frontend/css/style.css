@@ -24,7 +24,6 @@
 
   --font-ui: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Doto", "Instrument Sans", monospace;
-  --font-brand: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
 
   /* Type scale: a 1.25 ratio on a 16px base */
   --step--1: 0.8rem;
@@ -153,11 +152,6 @@ code {
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
-  font-family: var(--font-brand);
-  font-weight: 800;
-  font-size: var(--step-1);
-  letter-spacing: -0.02em;
-  text-transform: lowercase;
   text-decoration: none;
 }
 
@@ -166,6 +160,24 @@ code {
   width: 2rem;
   height: 2rem;
   background: url("../img/scrobbled-mark-simple.svg") center / contain no-repeat;
+}
+
+/* The outlined wordmark; the name is in the link's visually-hidden text. The "b" is
+   lime on dark and violet on light, so there is one file per theme. */
+.brand-word {
+  width: 5.3rem;
+  height: 1.4rem;
+  background: url("../img/scrobbled-wordmark-on-light.svg") center / contain no-repeat;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand-word {
+    background-image: url("../img/scrobbled-wordmark-on-dark.svg");
+  }
+}
+
+:root[data-theme="dark"] .brand-word {
+  background-image: url("../img/scrobbled-wordmark-on-dark.svg");
 }
 
 .site-header nav ul {
