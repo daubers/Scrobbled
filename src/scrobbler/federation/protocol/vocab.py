@@ -235,7 +235,7 @@ def update(activity_id: str, actor_id: str, obj: dict, *, to: list[str]) -> dict
 
 
 def hashtag(name: str) -> dict:
-    """A Hashtag tag, e.g. #Scrobbler. No href: we don't serve tag pages, and Mastodon
+    """A Hashtag tag, e.g. #Scrobbled. No href: we don't serve tag pages, and Mastodon
     still recognises and indexes the tag from `name` alone."""
     return {"type": "Hashtag", "name": f"#{name}"}
 

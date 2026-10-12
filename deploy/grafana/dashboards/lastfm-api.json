@@ -1,6 +1,6 @@
 {
   "uid": "scrobbler-lastfm",
-  "title": "Scrobbler: Last.fm API",
+  "title": "Scrobbled: Last.fm API",
   "description": "The Last.fm-compatible /2.0/ API: which methods clients call, what fails, and what happens to scrobbles.",
   "tags": [
     "scrobbler"
@@ -57,7 +57,7 @@
         "scrobbler"
       ],
       "asDropdown": true,
-      "title": "Scrobbler",
+      "title": "Scrobbled",
       "includeVars": false
     }
   ],

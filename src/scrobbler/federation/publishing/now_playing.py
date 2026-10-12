@@ -108,7 +108,7 @@ def _post_now_playing(user, playing, key: str, state: FederationNowPlaying, now:
         key,
         text=text,
         html=html,
-        tags=("Scrobbler", "NowPlaying"),
+        tags=("Scrobbled", "NowPlaying"),
         attachment=_attachment_for(playing),
     )
     if post is None:

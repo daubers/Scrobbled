@@ -1,6 +1,6 @@
 # User guide
 
-What Scrobbler does once you're signed in: connecting a player, importing your old
+What Scrobbled does once you're signed in: connecting a player, importing your old
 history, and sharing your listening on the fediverse. If you're setting up or running an
 instance rather than using one, see the [admin guide](admin-guide.md) instead.
 
@@ -18,7 +18,7 @@ In the player's scrobbling settings, choose a custom or self-hosted Last.fm serv
 
 - **API URL**: `https://your-host/2.0/`
 - **API key and shared secret**: from an app on the **Apps** page
-- **Username and password**: your Scrobbler account
+- **Username and password**: your Scrobbled account
 
 Two sign-in flows are supported, and most players use one or the other automatically:
 

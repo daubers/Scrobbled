@@ -160,7 +160,7 @@ def test_is_public_or_unlisted():
 
 
 def test_hashtag():
-    assert vocab.hashtag("Scrobbler") == {"type": "Hashtag", "name": "#Scrobbler"}
+    assert vocab.hashtag("Scrobbled") == {"type": "Hashtag", "name": "#Scrobbled"}
 
 
 def test_note():
@@ -172,14 +172,14 @@ def test_note():
         url=f"{BASE}/post.html?id=1",
         to=["FOLLOWERS"],
         cc=[],
-        tags=["Scrobbler"],
+        tags=["Scrobbled"],
     )
     assert doc["type"] == "Note"
     assert doc["attributedTo"] == f"{BASE}/users/alice"
     assert doc["content"] == "<p>Hello</p>"
     assert doc["contentMap"] == {"en": "<p>Hello</p>"}
     assert (doc["to"], doc["cc"]) == (["FOLLOWERS"], [])
-    assert doc["tag"] == [{"type": "Hashtag", "name": "#Scrobbler"}]
+    assert doc["tag"] == [{"type": "Hashtag", "name": "#Scrobbled"}]
     assert doc["sensitive"] is False
     assert "@context" not in doc  # carried by the wrapping Create instead
     assert "attachment" not in doc  # omitted entirely, not an empty list, when there's none

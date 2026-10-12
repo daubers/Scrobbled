@@ -38,7 +38,13 @@ export function publicPage() {
 }
 
 function brand() {
-  return h("a", { class: "brand", href: "index.html" }, h("span", { class: "brand-mark", "aria-hidden": "true" }), "Scrobbler");
+  return h(
+    "a",
+    { class: "brand", href: "index.html" },
+    h("span", { class: "brand-mark", "aria-hidden": "true" }),
+    h("span", { class: "brand-word", "aria-hidden": "true" }),
+    h("span", { class: "visually-hidden" }, "Scrobbled"),
+  );
 }
 
 function nav(active) {

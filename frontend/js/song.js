@@ -36,7 +36,7 @@ if (!artist || !track) {
 }
 
 function render(result) {
-  document.title = `${result.track} · Scrobbler`;
+  document.title = `${result.track} · Scrobbled`;
   const m = result.metadata;
 
   const body = h(

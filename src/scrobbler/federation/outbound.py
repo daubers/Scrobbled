@@ -19,7 +19,7 @@ def client() -> Client:
 
         config = current_app.extensions["federation"]
         existing = Client(
-            user_agent=f"Scrobbler/{__version__} (+{config.base_url})",
+            user_agent=f"Scrobbled/{__version__} (+{config.base_url})",
             insecure_testing=config.insecure_testing,
         )
         current_app.extensions["federation_client"] = existing

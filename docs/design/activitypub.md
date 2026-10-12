@@ -4,17 +4,17 @@ Status: **proposal, for review.** Nothing here is built yet. The decisions still
 
 ## Summary
 
-Let a user turn their Scrobbler account into a fediverse account, for example `@alice@scrobble.example`, that people on Mastodon, GoToSocial, Misskey and similar servers can follow. Followers see three kinds of post:
+Let a user turn their Scrobbled account into a fediverse account, for example `@alice@scrobble.example`, that people on Mastodon, GoToSocial, Misskey and similar servers can follow. Followers see three kinds of post:
 
 - a **weekly listening summary**
 - **milestones** (for example "10,000th scrobble")
 - **what the user is playing now**
 
-The first version is **outbound only**: Scrobbler publishes, and it accepts and manages followers. Following other people and showing their listening in the UI is a possible later phase (see [Later](#later-following-and-listen-activities)). The data model is designed so it can be added without rework.
+The first version is **outbound only**: Scrobbled publishes, and it accepts and manages followers. Following other people and showing their listening in the UI is a possible later phase (see [Later](#later-following-and-listen-activities)). The data model is designed so it can be added without rework.
 
 Federation is **off for everyone until they turn it on**. Until then a user can't be found by WebFinger and nothing about them is published.
 
-**Decided:** we write the protocol layer ourselves, on `cryptography` plus the Flask, SQLAlchemy and worker setup we already have (about 1,500 lines, in the four phases below). Scrobbler is BSD-licensed, and the ready-made Python library is AGPL (see [Build or buy](#build-or-buy)).
+**Decided:** we write the protocol layer ourselves, on `cryptography` plus the Flask, SQLAlchemy and worker setup we already have (about 1,500 lines, in the four phases below). Scrobbled is BSD-licensed, and the ready-made Python library is AGPL (see [Build or buy](#build-or-buy)).
 
 All of it lives in **one self-contained package, `scrobbler.federation`**, behind a narrow interface. It can then be changed, replaced or switched off without touching the rest of the app, and changes to the specs (signature schemes, vocabulary, FEPs) stay inside it. See [Module structure](#module-structure).
 
@@ -35,7 +35,7 @@ All of it lives in **one self-contained package, `scrobbler.federation`**, behin
 ## How it fits the current system
 
 ```
-Mastodon, GoToSocial, …                        Scrobbler
+Mastodon, GoToSocial, …                        Scrobbled
 ────────────────────────────────────────────────────────────────────────────
 GET /.well-known/webfinger?resource=acct:…  ─►  API  (only for opted-in users)
 GET /users/alice  (Accept: activity+json)   ─►  API  actor document
@@ -53,7 +53,7 @@ POST /users/alice/inbox  or  /inbox          ─►  API  verify signature, reco
 
 ## Module structure
 
-Everything to do with ActivityPub lives in `src/scrobbler/federation/`. The rest of Scrobbler knows only two things about it: how to switch it on, and a handful of domain events. Replacing the implementation (with another library, or a rewrite when the specs move on) means replacing this package; nothing else changes.
+Everything to do with ActivityPub lives in `src/scrobbler/federation/`. The rest of Scrobbled knows only two things about it: how to switch it on, and a handful of domain events. Replacing the implementation (with another library, or a rewrite when the specs move on) means replacing this package; nothing else changes.
 
 ```
 src/scrobbler/
@@ -222,7 +222,7 @@ Serve `/.well-known/nodeinfo` and `/nodeinfo/2.1`, giving the software name `scr
 
 ## What gets posted
 
-Posts are `Note` objects inside `Create` activities: Mastodon shows `Note` as a normal status, while other types are squashed into a title and link. The HTML uses only tags Mastodon keeps (`p`, `a`, `br`, `strong`, `em`, `ul`, `ol`, `li`), and all track and artist text is escaped. Each post also gets hashtags (`#NowPlaying`, `#Scrobbler`) as `Hashtag` tags. Visibility follows the user's setting, which defaults to **followers only**:
+Posts are `Note` objects inside `Create` activities: Mastodon shows `Note` as a normal status, while other types are squashed into a title and link. The HTML uses only tags Mastodon keeps (`p`, `a`, `br`, `strong`, `em`, `ul`, `ol`, `li`), and all track and artist text is escaped. Each post also gets hashtags (`#NowPlaying`, `#Scrobbled`) as `Hashtag` tags. Visibility follows the user's setting, which defaults to **followers only**:
 
 | Setting | `to` | `cc` |
 |---|---|---|
@@ -248,7 +248,7 @@ Example:
 > **This week: 312 scrobbles**
 > Top artists: 1. Radiohead (48) 2. Björk (31) 3. Portishead (22)
 > Top track: *Reckoner* by Radiohead (12 plays)
-> #Scrobbler
+> #Scrobbled
 
 ### Milestones
 
@@ -279,7 +279,7 @@ A new post for every track would flood followers' timelines. There are two optio
 | Maturity | New code, but the scope is narrow | Active, but young (0.3.x, one maintainer) | The most complete framework |
 | Effort | About 1,500 lines, mostly signatures, inbox and delivery | Less code, but we'd adapt its storage and flow to ours | A new service to run and monitor |
 
-**Decided: write it ourselves.** Scrobbler is BSD-3-Clause licensed. Using Pubby inside the app would make the running program subject to the AGPL, which defeats the point of a permissive licence. Fedify is excellent, but it would split the backend across two languages. The protocol surface we need is small (four activity types in and three out), so writing it ourselves is the least total cost. It also keeps ActivityPub on the same metrics, dashboards and tests as everything else, and it can all live in the one replaceable module described above.
+**Decided: write it ourselves.** Scrobbled is BSD-3-Clause licensed. Using Pubby inside the app would make the running program subject to the AGPL, which defeats the point of a permissive licence. Fedify is excellent, but it would split the backend across two languages. The protocol surface we need is small (four activity types in and three out), so writing it ourselves is the least total cost. It also keeps ActivityPub on the same metrics, dashboards and tests as everything else, and it can all live in the one replaceable module described above.
 
 New dependency: `cryptography` (Apache-2.0 or BSD), for keys and signatures.
 
@@ -335,8 +335,8 @@ Everything goes on the existing Prometheus and Grafana setup:
   - inbox state transitions
   - delivery retry schedule
   - visibility addressing
-- **In-process federation**: two Scrobbler instances in one test process following each other.
-- **A real peer in CI**: a [GoToSocial](https://gotosocial.org) container, which is a single binary with SQLite. It follows a Scrobbler user and we assert that it receives the `Accept` and the posts. That's much lighter than running Mastodon in CI.
+- **In-process federation**: two Scrobbled instances in one test process following each other.
+- **A real peer in CI**: a [GoToSocial](https://gotosocial.org) container, which is a single binary with SQLite. It follows a Scrobbled user and we assert that it receives the `Accept` and the posts. That's much lighter than running Mastodon in CI.
 - **Manual pass before release** (done, over a `cloudflared` tunnel - see [phase 4](activitypub-phase4.md)):
   - follow from a real Mastodon account
   - check the profile, posts, profile-field updates and unfollowing
@@ -363,8 +363,8 @@ Each phase can be released on its own, with its migration, docs, OpenAPI updates
 
 This is the "profiles plus friends' listening" option, deliberately left out of v1:
 
-- Users follow other Scrobbler users, or any actor that publishes listens, and see a friends feed in the UI.
-- **Wire format**: ActivityStreams has a `Listen` activity type. Funkwhale already federates `Listen` activities whose object is a `Track`. We'd send the same thing to followers on Scrobbler and Funkwhale servers only. Mastodon ignores activity types it doesn't know, and a stream of `Listen`s isn't something people want in their timelines anyway.
+- Users follow other Scrobbled users, or any actor that publishes listens, and see a friends feed in the UI.
+- **Wire format**: ActivityStreams has a `Listen` activity type. Funkwhale already federates `Listen` activities whose object is a `Track`. We'd send the same thing to followers on Scrobbled and Funkwhale servers only. Mastodon ignores activity types it doesn't know, and a stream of `Listen`s isn't something people want in their timelines anyway.
 - **Changes needed**: an outbound `Follow` flow, storing received listens, a feed UI, and moderation of incoming content.
 - **Account migration** (`Move` and `alsoKnownAs`) would come with this, so users can change handle or domain without losing followers.
 

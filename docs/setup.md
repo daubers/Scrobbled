@@ -1,4 +1,4 @@
-# Working on Scrobbler
+# Working on Scrobbled
 
 Setting up a local development environment. For running a real instance, see the
 [admin guide](admin-guide.md). For what the service does, see the
@@ -67,7 +67,7 @@ route is missing its bearer-auth declaration.
 
 - `uv run python scripts/generate_traffic.py --minutes 5` — sends a realistic mix of
   scrobbles and errors, so the Grafana dashboards have something to show.
-- `scripts/interop/run.sh` — runs Scrobbler against a real GoToSocial server on a private
+- `scripts/interop/run.sh` — runs Scrobbled against a real GoToSocial server on a private
   network and checks the whole federation follow/post/now-playing life cycle end to end.
   CI runs this on every push; run it locally the same way before changing anything in
   `scrobbler.federation`.

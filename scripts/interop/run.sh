@@ -17,7 +17,7 @@ cleanup() {
 trap cleanup EXIT
 
 "$compose" down -v --remove-orphans >/dev/null 2>&1
-echo "==> Building and starting Scrobbler + GoToSocial"
+echo "==> Building and starting Scrobbled + GoToSocial"
 "$compose" up -d --build --wait db api ui worker tls gotosocial || { "$compose" ps; exit 1; }
 
 echo "==> Waiting for GoToSocial"
@@ -32,7 +32,7 @@ echo "==> Creating the GoToSocial test user"
 "$compose" exec -T gotosocial /gotosocial/gotosocial admin account confirm --username gtsuser >/dev/null
 
 diagnose() {
-  echo "==> Scrobbler federation state"
+  echo "==> Scrobbled federation state"
   "$compose" exec -T db psql -U scrobbler -d scrobbler -c \
     "select activity_type, status, reason, attempts from federation_inbox order by id" -c \
     "select a.activity_type, d.status, d.attempts, d.last_status, left(d.last_error, 200) as error

@@ -26,7 +26,7 @@ Everything is in `scrobbler.federation`, using the core's existing `services.scr
 ## 1. Settings and data (migration on the `federation` branch)
 
 - **`federation_settings` gains `now_playing_mode`**: `off` (default), `profile`, or `posts`. Validated the same way `visibility` is.
-- **`federation_now_playing`**, one row per user, the state of what Scrobbler has last told the fediverse (as opposed to `now_playing` in core, which is what's actually playing):
+- **`federation_now_playing`**, one row per user, the state of what Scrobbled has last told the fediverse (as opposed to `now_playing` in core, which is what's actually playing):
   - `profile_key` (nullable) and `profile_updated_at` (nullable): what the last `Update(Person)` said, and when it was sent
   - `post_key` (nullable) and `post_posted_at` (nullable): the key of the last now-playing post, and when
 
@@ -36,7 +36,7 @@ Everything is in `scrobbler.federation`, using the core's existing `services.scr
 
 - **`update(activity_id, actor_id, actor_object)`**: wraps a document as an `Update`, addressed the same way `undo()` already does (mirrors its shape).
 - **`person(...)` already takes `fields`** (phase 1): a "Now playing" field is just one more `(name, value)` pair, `"Track by Artist"`.
-- Now-playing posts reuse the existing `note()`/`create()` builders from phase 3, tagged `#NowPlaying` in addition to `#Scrobbler` (already anticipated in the phase 3 plan's vocabulary notes).
+- Now-playing posts reuse the existing `note()`/`create()` builders from phase 3, tagged `#NowPlaying` in addition to `#Scrobbled` (already anticipated in the phase 3 plan's vocabulary notes).
 
 ## 3. Live actor vs. pushed updates
 
@@ -114,4 +114,4 @@ No event receiver, no pending-checks queue: unlike milestones, now playing doesn
 | Minimum played before a post | 30 seconds |
 | Deleting the previous now-playing post | Always, when a new one goes out |
 | Worker poll interval | 30 seconds |
-| Hashtags | `#Scrobbler` and `#NowPlaying` |
+| Hashtags | `#Scrobbled` and `#NowPlaying` |

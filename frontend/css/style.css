@@ -152,18 +152,32 @@ code {
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
-  font-weight: 700;
-  font-size: var(--step-1);
   text-decoration: none;
 }
 
-/* A small round "power" lamp */
+/* The Scrobbled mark: a record with the tonearm resting on it */
 .brand-mark {
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 50%;
-  background: var(--glow);
-  box-shadow: 0 0 0 3px var(--panel), 0 0 10px 1px color-mix(in srgb, var(--glow) 60%, transparent);
+  width: 2rem;
+  height: 2rem;
+  background: url("../img/scrobbled-mark-simple.svg") center / contain no-repeat;
+}
+
+/* The outlined wordmark; the name is in the link's visually-hidden text. The "b" is
+   lime on dark and violet on light, so there is one file per theme. */
+.brand-word {
+  width: 5.3rem;
+  height: 1.4rem;
+  background: url("../img/scrobbled-wordmark-on-light.svg") center / contain no-repeat;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand-word {
+    background-image: url("../img/scrobbled-wordmark-on-dark.svg");
+  }
+}
+
+:root[data-theme="dark"] .brand-word {
+  background-image: url("../img/scrobbled-wordmark-on-dark.svg");
 }
 
 .site-header nav ul {
@@ -1111,7 +1125,7 @@ input {
   position: relative;
 }
 
-/* No artwork: a plain ring, echoing .brand-mark's small round "lamp" motif */
+/* No artwork: a plain ring, echoing the record in .brand-mark */
 .art-thumb-empty::after {
   content: "";
   position: absolute;

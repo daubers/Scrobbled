@@ -46,7 +46,7 @@ Everything is in `scrobbler.federation` except one small addition to the core st
   - `id`, `attributedTo`, `content` (HTML) plus `contentMap` (`{"en": …}`)
   - `published`, `url` (the UI post page)
   - `to` and `cc` from the visibility setting
-  - `tag` (`Hashtag` objects: `#Scrobbler`, and `#NowPlaying` in phase 4)
+  - `tag` (`Hashtag` objects: `#Scrobbled`, and `#NowPlaying` in phase 4)
   - `sensitive: false`
 - **`create(...)`**: `Create` wrapping the Note, with the same addressing.
 - **`delete(...)`**: `Delete` whose object is a `Tombstone` of the Note (the same shape Mastodon sends).
@@ -85,7 +85,7 @@ Everything is in `scrobbler.federation` except one small addition to the core st
   > **My week in music: 312 plays**
   > Top artists: 1. Radiohead (48) 2. Björk (31) 3. Portishead (22)
   > Most played: *Reckoner* by Radiohead (12 plays)
-  > #Scrobbler
+  > #Scrobbled
 
 **Milestones** (`publishing/milestones.py`, worker task `federation.milestones`):
 
@@ -99,7 +99,7 @@ Everything is in `scrobbler.federation` except one small addition to the core st
 - **No retroactive posts:**
   - When a user **turns sharing on**, every threshold they've already passed is marked `posted=false`.
   - When an **import finishes** (`import_finished`), the same happens: imported history moves the baseline silently. Imported plays therefore never trigger milestone posts, even if a live scrobble crosses a line soon after.
-- Example: *"10,000 plays on Scrobbler 🎉"* or *"Björk just joined my all-time top 10 (at #7)"*.
+- Example: *"10,000 plays on Scrobbled 🎉"* or *"Björk just joined my all-time top 10 (at #7)"*.
 
 ## 6. Endpoints (served on the UI domain, documented in OpenAPI)
 
@@ -188,5 +188,5 @@ Everything is in `scrobbler.federation` except one small addition to the core st
 | Milestone thresholds | Plays: 1k, 5k, 10k, then every 25k. An artist's plays: 100, 500, 1k. New artist in the all-time top 10 |
 | Posts per milestone check | At most one (the most notable) |
 | Post language | English only for now (`contentMap.en`) |
-| Hashtag | `#Scrobbler` on every post |
+| Hashtag | `#Scrobbled` on every post |
 | Deleting individual posts | Allowed, from the web UI |

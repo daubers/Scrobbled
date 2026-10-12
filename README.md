@@ -1,4 +1,4 @@
-# Scrobbler
+# Scrobbled
 
 A self-hosted music scrobbling service. It speaks the **Last.fm (Audioscrobbler 2.0) API**,
 so players and scrobblers that let you set a custom Last.fm server can use it unchanged.
@@ -40,4 +40,5 @@ configuration reference and production notes.
 ## Licence
 
 BSD 3-Clause; see [LICENSE](LICENSE). The fonts vendored in `frontend/fonts/` are under
-the SIL Open Font License 1.1.
+the SIL Open Font License 1.1. The Scrobbled logo, wordmark and icons are not BSD-licensed:
+they are all rights reserved, see [LICENSE-ARTWORK.md](LICENSE-ARTWORK.md).

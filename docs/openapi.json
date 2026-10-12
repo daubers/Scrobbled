@@ -1,7 +1,7 @@
 {
   "info": {
     "description": "Two APIs: `/2.0/` is Last.fm (Audioscrobbler 2.0) compatible, for players and scrobblers; `/api/v1/` is the JSON API used by the web UI.",
-    "title": "Scrobbler API",
+    "title": "Scrobbled API",
     "version": "v1"
   },
   "paths": {

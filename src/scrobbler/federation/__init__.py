@@ -1,6 +1,6 @@
 """ActivityPub federation: optional, self-contained, replaceable.
 
-The rest of Scrobbler only calls `init_app(app)` (from `create_app`) and sends domain
+The rest of Scrobbled only calls `init_app(app)` (from `create_app`) and sends domain
 events (`scrobbler.events`). Everything else about federation lives in this package;
 see README.md here and docs/design/activitypub.md.
 

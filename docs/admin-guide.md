@@ -1,9 +1,9 @@
 # Admin guide
 
-Running a real Scrobbler instance: architecture, installation, configuration, TLS,
+Running a real Scrobbled instance: architecture, installation, configuration, TLS,
 fediverse sharing, monitoring, backups, upgrades and troubleshooting. If you're using an
 instance someone else runs, see the [user guide](user-guide.md) instead. If you're
-working on Scrobbler's own code, see [setup.md](setup.md).
+working on Scrobbled's own code, see [setup.md](setup.md).
 
 ## Architecture
 
@@ -25,7 +25,7 @@ Prometheus ◄── API :9100/metrics, postgres-exporter ──► Grafana
 - **`db`**: PostgreSQL.
 - With the `monitoring` profile: `prometheus`, `grafana`, `postgres-exporter`.
 
-Everything Scrobbler needs to run is in these five services plus optional monitoring —
+Everything Scrobbled needs to run is in these five services plus optional monitoring —
 there's no separate cache, queue or search service to operate.
 
 ## Installing
@@ -42,7 +42,7 @@ Published images: `pkgs.daubney.dev/scrobbler/scrobbler-api` and
 `pkgs.daubney.dev/scrobbler/scrobbler-ui`, tagged `main` (latest push to `main`),
 `sha-<commit>`, and `<version>`/`latest` for tagged releases.
 
-This is enough for evaluating Scrobbler. Before putting it in front of real users, also
+This is enough for evaluating Scrobbled. Before putting it in front of real users, also
 read **Putting it behind TLS** below — the quick start above serves plain HTTP only.
 
 ## Configuration
@@ -109,7 +109,7 @@ the web UI — see the [user guide](user-guide.md#sharing-on-the-fediverse).
 
 ## Putting it behind TLS
 
-Scrobbler itself only speaks plain HTTP; something in front of it needs to terminate
+Scrobbled itself only speaks plain HTTP; something in front of it needs to terminate
 TLS. Any reverse proxy works — nginx, Caddy, or a tunnel like Cloudflare Tunnel for
 testing without a public IP (see `docs/design/activitypub-phase4.md` for how the
 project's own manual federation test used one).
@@ -166,7 +166,7 @@ registered/active/currently-listening users. Labels never contain usernames, API
 track names.
 
 With `--profile monitoring`, Grafana (`GRAFANA_ADMIN_PASSWORD`) provisions a
-**Scrobbler** folder with dashboards for API overview, Last.fm API, usage, database and
+**Scrobbled** folder with dashboards for API overview, Last.fm API, usage, database and
 (with federation on) federation. Alert rules live in `deploy/prometheus/alerts.yml` —
 evaluated by Prometheus and visible in Grafana, but nothing routes them anywhere without
 Alertmanager.
@@ -230,7 +230,7 @@ how to run it locally before tagging.
 
 ## Troubleshooting
 
-**The web UI loads but can't reach the API ("Can't reach the Scrobbler API at …" or
+**The web UI loads but can't reach the API ("Can't reach the Scrobbled API at …" or
 requests failing silently).** Almost always `CORS_ORIGINS` on the `api` service not
 listing the exact origin the browser loads the UI from (scheme and host both have to
 match — `https://scrobble.example` is not the same origin as `http://scrobble.example`
@@ -269,10 +269,10 @@ curl -H 'Accept: application/jrd+json' \
 ```
 
 If that's correct, the fix is time (or trying a smaller/different instance to confirm
-it's not a Scrobbler-side problem) — there's nothing to change on the server.
+it's not a Scrobbled-side problem) — there's nothing to change on the server.
 
 **A legacy scrobbler client (e.g. VLC's built-in scrobbler) fails to connect at all.**
-Scrobbler implements the Last.fm 2.0 API only, not the legacy 1.2 Audioscrobbler
+Scrobbled implements the Last.fm 2.0 API only, not the legacy 1.2 Audioscrobbler
 handshake (`hs=true&p=1.2&...`). Clients that only speak 1.2 can't be pointed at
-Scrobbler regardless of configuration — point users at a client with 2.0 support
+Scrobbled regardless of configuration — point users at a client with 2.0 support
 instead.

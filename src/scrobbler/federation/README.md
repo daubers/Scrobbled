@@ -112,7 +112,7 @@ for users with it on, every 30 seconds). All are registered only when federation
 
 ## Interop
 
-`scripts/interop/run.sh` runs Scrobbler against a real GoToSocial server on a private
+`scripts/interop/run.sh` runs Scrobbled against a real GoToSocial server on a private
 `.test` network. `scripts/interop/gotosocial_interop.py` checks the whole follow life
 cycle, then `run.sh` seeds a scrobble and a now-playing track, runs
 `flask federation post-weekly --now` directly in the `api` container, and runs the

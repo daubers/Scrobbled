@@ -1,4 +1,4 @@
-"""Send realistic traffic to a running Scrobbler, e.g. to see the Grafana dashboards move.
+"""Send realistic traffic to a running Scrobbled, e.g. to see the Grafana dashboards move.
 
     uv run python scripts/generate_traffic.py --api http://localhost:5050 --minutes 5
 

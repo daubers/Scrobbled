@@ -1,6 +1,6 @@
 {
   "uid": "scrobbler-database",
-  "title": "Scrobbler: Database",
+  "title": "Scrobbled: Database",
   "description": "Query latency and pool use from the app's side; Postgres health from postgres-exporter.",
   "tags": [
     "scrobbler"
@@ -28,7 +28,7 @@
         "scrobbler"
       ],
       "asDropdown": true,
-      "title": "Scrobbler",
+      "title": "Scrobbled",
       "includeVars": false
     }
   ],

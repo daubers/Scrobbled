@@ -1,6 +1,6 @@
 {
   "uid": "scrobbler-usage",
-  "title": "Scrobbler: Usage",
+  "title": "Scrobbled: Usage",
   "description": "Who is using the service and how much they're listening.",
   "tags": [
     "scrobbler"
@@ -28,7 +28,7 @@
         "scrobbler"
       ],
       "asDropdown": true,
-      "title": "Scrobbler",
+      "title": "Scrobbled",
       "includeVars": false
     }
   ],
