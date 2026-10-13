@@ -62,6 +62,8 @@ read **Putting it behind TLS** below — the quick start above serves plain HTTP
 | `LASTFM_API_KEY` | api, worker | *(unset)* | Enables importing straight from Last.fm ([get a key](https://www.last.fm/api/account/create)) |
 | `MUSICBRAINZ_CONTACT` | api, worker | `UI_BASE_URL` | Contact URL/email sent to MusicBrainz for album art lookups (no key needed, but they ask for one) |
 | `ART_STORAGE_DIR` | api, worker | `var/album-art` | Where downloaded album art is stored; the worker writes it, the api serves it — both need access to the same directory (`docker compose` mounts a shared volume there) |
+| `AVATAR_UPLOAD_MAX_BYTES` | api | 2 MB | Largest profile image a user may upload (a reverse proxy needs a body limit at least this large too). Images are stored in `avatars/` inside `ART_STORAGE_DIR` |
+| `AVATAR_GRAVATAR_ENABLED` | api | off | Lets users use their Gravatar as their profile image. The api then calls gravatar.com (outbound HTTPS needed), sending it a SHA-256 hash of the user's email address; browsers never contact Gravatar |
 | `ART_UPLOAD_MAX_BYTES` | api | 5 MB | Largest image a user may upload as their own album art. A reverse proxy in front of the api needs a body limit at least this large |
 | `IMPORT_MAX_BYTES` | api | 200 MB | Largest export file accepted |
 | `WORKER_METRICS_PORT` | worker | `9101` | The worker's Prometheus metrics port |
@@ -200,6 +202,11 @@ disposable cache — it's simply re-downloaded the next time it's requested. Ima
 **upload** (and the art from their manual corrections) live under `user/` in the same
 volume and can't be re-created, so include the volume in your backups. The database rows
 that point at them are in `user_album_art`; restore the two together.
+
+Profile images (uploads, and copies of users' Gravatars) are in `avatars/` in that volume,
+one file per user id, and likewise belong in your backups. The `users` table records
+which users have one (`avatar_source`); a missing file just shows as no image. Gravatar
+copies can be re-fetched by their users, but uploads can't be re-created.
 
 ## Upgrades
 

@@ -65,6 +65,22 @@ flight. Unlike live scrobbles, imports keep plays of any age (still skipping row
 artist or track, or plays dated in the future). Plays already in your history are
 skipped, so importing the same export again, or importing overlapping exports, is safe.
 
+## Your profile image
+
+Click your name in the page header to open **Profile**, where you can give yourself a
+picture, shown next to your name. Upload a JPEG, PNG or WebP image, or remove it again.
+
+If your instance's admin has allowed it, you can also **use your Gravatar**. The server
+asks Gravatar for the picture linked to your account email, sending it a hash of that
+address (never the address itself), and keeps a copy; your browser doesn't contact
+Gravatar. **Refresh Gravatar** fetches it again after you change it there. Choosing an
+upload replaces a Gravatar and vice versa.
+
+Your image is private by default. If your instance shares on the fediverse, **Sharing**
+has a **Share my profile image** switch that shows it on your public profile page and
+sends it to other servers as your picture. They keep their own copies, so a change or
+removal can take a while to show up everywhere.
+
 ## Sharing on the fediverse
 
 Only available if your instance's admin has turned this on — ask them, or check whether

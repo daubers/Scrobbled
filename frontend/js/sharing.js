@@ -16,6 +16,7 @@ const FIELDS = [
   "post_milestones",
   "timezone",
   "now_playing_mode",
+  "share_avatar",
   "display_name",
   "bio",
 ];
@@ -155,6 +156,7 @@ async function save(event) {
     post_milestones: form.elements.post_milestones.checked,
     timezone: form.elements.timezone.value.trim() || "UTC",
     now_playing_mode: form.querySelector("input[name=now_playing_mode]:checked").value,
+    share_avatar: form.elements.share_avatar.checked,
     display_name: form.elements.display_name.value.trim() || null,
     bio: form.elements.bio.value.trim() || null,
   };
