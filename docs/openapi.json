@@ -1921,6 +1921,166 @@
         ]
       }
     },
+    "/api/v1/me/avatar": {
+      "get": {
+        "responses": {
+          "404": {
+            "description": "You have no profile image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Your profile image (JPEG, PNG or WebP)"
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Your profile image",
+        "tags": [
+          "Avatar"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_CONTENT"
+          },
+          "415": {
+            "description": "Not a JPEG, PNG or WebP image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Image too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/AvatarUpload"
+              }
+            }
+          }
+        },
+        "summary": "Upload a profile image",
+        "description": "Replaces your current one, whatever its source.",
+        "tags": [
+          "Avatar"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "responses": {
+          "404": {
+            "description": "You have no profile image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Remove your profile image",
+        "tags": [
+          "Avatar"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/healthz": {
       "get": {
         "responses": {
@@ -3797,6 +3957,10 @@
       "description": "Album art, resolved from MusicBrainz / Cover Art Archive by a background worker. You can also upload your own art, or correct a failed lookup; those only change what you see."
     },
     {
+      "name": "Avatar",
+      "description": "Your profile image: upload one, or remove it."
+    },
+    {
       "name": "Health",
       "description": "Liveness for load balancers and containers"
     },
@@ -3931,6 +4095,30 @@
             "type": "string",
             "format": "date-time",
             "readOnly": true
+          },
+          "has_avatar": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "Whether you have a profile image"
+          },
+          "avatar_source": {
+            "type": "string",
+            "enum": [
+              "none",
+              "upload",
+              "gravatar"
+            ],
+            "readOnly": true,
+            "description": "Where your profile image comes from"
+          },
+          "avatar_updated_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "readOnly": true,
+            "description": "When it last changed"
           }
         },
         "additionalProperties": false
@@ -4652,6 +4840,20 @@
             }
           }
         },
+        "additionalProperties": false
+      },
+      "AvatarUpload": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "description": "A JPEG, PNG or WebP image",
+            "type": "string",
+            "format": "binary"
+          }
+        },
+        "required": [
+          "file"
+        ],
         "additionalProperties": false
       },
       "Health": {

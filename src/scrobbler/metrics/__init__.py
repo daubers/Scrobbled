@@ -193,6 +193,23 @@ art_override_worker_seconds = Histogram(
     buckets=(0.25, 0.5, 1, 2.5, 5, 10, 20, 40, 80),
 )
 
+# Profile images
+avatar_uploads_total = Counter(
+    "scrobbler_avatar_uploads_total",
+    "Profile image upload attempts: ok, empty, too_large or bad_type",
+    ["result"],
+)
+avatar_upload_bytes = Histogram(
+    "scrobbler_avatar_upload_bytes",
+    "Size of accepted profile image uploads",
+    buckets=(5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000, 2_000_000),
+)
+avatar_actions_total = Counter(
+    "scrobbler_avatar_actions_total",
+    "Profile image changes: uploaded, removed",
+    ["action"],
+)
+
 # Database
 db_query_duration_seconds = Histogram(
     "scrobbler_db_query_duration_seconds",
