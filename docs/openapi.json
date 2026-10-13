@@ -2081,6 +2081,65 @@
         ]
       }
     },
+    "/api/v1/me/avatar/gravatar": {
+      "post": {
+        "responses": {
+          "502": {
+            "description": "Gravatar couldn't be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Gravatar is off, or has no image for you",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Use your Gravatar as your profile image",
+        "description": "The server fetches the image for your account email from Gravatar (sending it a hash\nof the address) and keeps a copy. Call again to refresh it. Only available when the\nserver's admin has enabled it; see `gravatar_enabled` on `/auth/me`.",
+        "tags": [
+          "Avatar"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/healthz": {
       "get": {
         "responses": {
@@ -3958,7 +4017,7 @@
     },
     {
       "name": "Avatar",
-      "description": "Your profile image: upload one, or remove it."
+      "description": "Your profile image: upload one, use your Gravatar (if this server allows it), or remove it."
     },
     {
       "name": "Health",
@@ -4119,6 +4178,11 @@
             "format": "date-time",
             "readOnly": true,
             "description": "When it last changed"
+          },
+          "gravatar_enabled": {
+            "readOnly": true,
+            "type": "boolean",
+            "description": "Whether this server offers Gravatar"
           }
         },
         "additionalProperties": false

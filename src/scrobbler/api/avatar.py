@@ -9,7 +9,10 @@ from scrobbler.services import avatars
 blp = Blueprint(
     "Avatar",
     __name__,
-    description="Your profile image: upload one, or remove it.",
+    description=(
+        "Your profile image: upload one, use your Gravatar (if this server allows it), "
+        "or remove it."
+    ),
 )
 
 
@@ -56,6 +59,29 @@ def upload_avatar(files):
     avatars.save(g.user, data, content_type, "upload")
     metrics.avatar_uploads_total.labels("ok").inc()
     metrics.avatar_upload_bytes.observe(len(data))
+    return g.user
+
+
+@blp.route("/gravatar", methods=["POST"])
+@authenticated(blp)
+@blp.response(200, UserSchema)
+@blp.alt_response(404, schema=ErrorSchema, description="Gravatar is off, or has no image for you")
+@blp.alt_response(502, schema=ErrorSchema, description="Gravatar couldn't be reached")
+def use_gravatar():
+    """Use your Gravatar as your profile image
+
+    The server fetches the image for your account email from Gravatar (sending it a hash
+    of the address) and keeps a copy. Call again to refresh it. Only available when the
+    server's admin has enabled it; see `gravatar_enabled` on `/auth/me`.
+    """
+    try:
+        avatars.use_gravatar(g.user)
+    except avatars.GravatarDisabled:
+        abort(404, code="gravatar_disabled", message="This server doesn't use Gravatar.")
+    except avatars.GravatarMissing:
+        abort(404, code="no_gravatar", message="Gravatar has no image for your email address.")
+    except avatars.GravatarUnavailable:
+        abort(502, code="gravatar_unavailable", message="Gravatar couldn't be reached.")
     return g.user
 
 

@@ -1,6 +1,7 @@
 """Marshmallow schemas for the /api/v1 JSON API. They drive both request
 validation and the generated OpenAPI document."""
 
+from flask import current_app
 from flask_smorest.fields import Upload
 from marshmallow import Schema, ValidationError, fields, validate, validates_schema
 
@@ -31,6 +32,13 @@ class UserSchema(Schema):
     avatar_updated_at = fields.DateTime(
         dump_only=True, allow_none=True, metadata={"description": "When it last changed"}
     )
+    gravatar_enabled = fields.Method(
+        "_gravatar_enabled",
+        metadata={"type": "boolean", "description": "Whether this server offers Gravatar"},
+    )
+
+    def _gravatar_enabled(self, _user) -> bool:
+        return bool(current_app.config["AVATAR_GRAVATAR_ENABLED"])
 
 
 class RegisterSchema(Schema):

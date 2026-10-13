@@ -75,6 +75,14 @@ class Config:
     # Profile images live in an "avatars" folder inside ART_STORAGE_DIR. This is the
     # largest one a user may upload.
     AVATAR_UPLOAD_MAX_BYTES = int(os.environ.get("AVATAR_UPLOAD_MAX_BYTES", str(2 * 1024 * 1024)))
+    # Lets users pick their Gravatar as their profile image. Off by default: using one
+    # sends a hash of the user's email address to Gravatar (from this server, not their browser).
+    AVATAR_GRAVATAR_ENABLED = os.environ.get("AVATAR_GRAVATAR_ENABLED", "").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    GRAVATAR_URL = os.environ.get("GRAVATAR_URL", "https://gravatar.com/avatar/")
 
     IMPORT_MAX_BYTES = int(os.environ.get("IMPORT_MAX_BYTES", str(200 * 1024 * 1024)))
     MAX_CONTENT_LENGTH = IMPORT_MAX_BYTES + 1024 * 1024  # uploads are the largest requests

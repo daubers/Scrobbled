@@ -204,9 +204,19 @@ avatar_upload_bytes = Histogram(
     "Size of accepted profile image uploads",
     buckets=(5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000, 2_000_000),
 )
+avatar_gravatar_fetches_total = Counter(
+    "scrobbler_avatar_gravatar_fetches_total",
+    "Gravatar fetches: ok, none (no Gravatar for the email), bad_type, too_large or error",
+    ["result"],
+)
+avatar_gravatar_seconds = Histogram(
+    "scrobbler_avatar_gravatar_seconds",
+    "Latency of one Gravatar fetch",
+    buckets=(0.1, 0.25, 0.5, 1, 2.5, 5, 10),
+)
 avatar_actions_total = Counter(
     "scrobbler_avatar_actions_total",
-    "Profile image changes: uploaded, removed",
+    "Profile image changes: uploaded, gravatar, removed",
     ["action"],
 )
 
