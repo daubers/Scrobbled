@@ -1,10 +1,12 @@
 """Per-user sharing settings: whether a user federates, and how."""
 
+from flask import Response, request
+
 from scrobbler.extensions import db
 from scrobbler.federation import keys
 from scrobbler.federation.models import NOW_PLAYING_MODES, VISIBILITIES, FederationSettings
 from scrobbler.federation.protocol.schedule import is_valid_timezone
-from scrobbler.services import accounts
+from scrobbler.services import accounts, avatars
 
 EDITABLE = (
     "enabled",
@@ -18,6 +20,7 @@ EDITABLE = (
     "post_weekly_summary",
     "post_milestones",
     "now_playing_mode",
+    "share_avatar",
 )
 
 
@@ -38,6 +41,7 @@ def settings_for(user_id: int) -> FederationSettings:
             post_weekly_summary=True,
             post_milestones=True,
             now_playing_mode="off",
+            share_avatar=False,
         )
     return settings
 
@@ -79,6 +83,27 @@ def shared_user(username: str):
     if settings is None or not settings.enabled:
         return None
     return user, settings
+
+
+def shared_avatar(username: str):
+    """(user, image bytes) for a sharing user who has chosen to share their profile image
+    and has one, else None - indistinguishable from 'no such user', like shared_user."""
+    found = shared_user(username)
+    if found is None:
+        return None
+    user, settings = found
+    if not settings.share_avatar:
+        return None
+    data = avatars.read(user)
+    return None if data is None else (user, data)
+
+
+def avatar_response(user, data: bytes):
+    """The public image response: cacheable by anyone, but briefly, as it can change."""
+    response = Response(data, mimetype=user.avatar_content_type or "image/jpeg")
+    response.headers["Cache-Control"] = "public, max-age=300"
+    response.add_etag()
+    return response.make_conditional(request)
 
 
 def sharing_count() -> int:

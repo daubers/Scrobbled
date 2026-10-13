@@ -35,6 +35,7 @@ class ActorUrls:
     shared_inbox: str
     key_id: str
     profile_page: str
+    avatar: str
 
 
 def actor_urls(base_url: str, username: str, profile_page: str) -> ActorUrls:
@@ -49,6 +50,7 @@ def actor_urls(base_url: str, username: str, profile_page: str) -> ActorUrls:
         shared_inbox=f"{base_url}/inbox",
         key_id=f"{actor}#main-key",
         profile_page=profile_page,
+        avatar=f"{actor}/avatar",
     )
 
 
@@ -79,8 +81,10 @@ def person(
     indexable: bool,
     published: str | None = None,
     fields: list[tuple[str, str]] = (),
+    icon: tuple[str, str] | None = None,
 ) -> dict:
-    """A user's actor document. `fields` are (name, plain-text value) profile fields."""
+    """A user's actor document. `fields` are (name, plain-text value) profile fields;
+    `icon` is the profile picture's (url, media type)."""
     doc = {
         "@context": ACTOR_CONTEXT,
         "id": urls.id,
@@ -106,6 +110,8 @@ def person(
     }
     if published:
         doc["published"] = published
+    if icon:
+        doc["icon"] = {"type": "Image", "url": icon[0], "mediaType": icon[1]}
     return doc
 
 

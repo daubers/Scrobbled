@@ -134,6 +134,15 @@ def actor(username: str):
     return _json(doc)
 
 
+@bp.get("/users/<username>/avatar")
+def actor_avatar(username: str):
+    found = sharing.shared_avatar(username)
+    if found is None:
+        return _not_found("avatar")
+    _found("avatar")
+    return sharing.avatar_response(*found)
+
+
 def _collection(username: str, which: str, items: list | None, total: int = 0):
     found = sharing.shared_user(username)
     if found is None:

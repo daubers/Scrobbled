@@ -127,6 +127,7 @@ def test_public_profile(fed_client, sharing_user, make_user):
         "display_name": "Alice",
         "bio": "Listening.",
         "now_playing": None,
+        "has_avatar": False,
         "handle": "@alice@scrobble.test",
         "actor_url": "https://scrobble.test/users/alice",
     }

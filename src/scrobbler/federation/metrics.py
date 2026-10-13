@@ -4,7 +4,7 @@ from prometheus_client import Counter, Gauge, Histogram
 
 lookups_total = Counter(
     "scrobbler_federation_lookups_total",
-    "Fediverse lookups answered: WebFinger, actor, NodeInfo, profile",
+    "Fediverse lookups answered: WebFinger, actor, NodeInfo, profile, avatar",
     ["kind", "result"],
 )
 sharing_changes_total = Counter(

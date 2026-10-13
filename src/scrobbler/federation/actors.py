@@ -34,6 +34,15 @@ def now_playing_field(user, settings) -> list[tuple[str, str]]:
     return [(NOW_PLAYING_FIELD, text)] if text else []
 
 
+def avatar_icon(urls: vocab.ActorUrls, user, settings) -> tuple[str, str] | None:
+    """The actor's picture: only if they've chosen to share one. The URL carries the
+    image's age so other servers, which cache by URL, fetch a changed picture."""
+    if not settings.share_avatar or not user.has_avatar:
+        return None
+    version = int(user.avatar_updated_at.timestamp()) if user.avatar_updated_at else 0
+    return f"{urls.avatar}?v={version}", user.avatar_content_type or "image/jpeg"
+
+
 def build_document(urls: vocab.ActorUrls, user, settings) -> dict:
     return vocab.person(
         urls,
@@ -46,4 +55,5 @@ def build_document(urls: vocab.ActorUrls, user, settings) -> dict:
         indexable=settings.indexable,
         published=settings.created_at.isoformat().replace("+00:00", "Z"),
         fields=now_playing_field(user, settings),
+        icon=avatar_icon(urls, user, settings),
     )

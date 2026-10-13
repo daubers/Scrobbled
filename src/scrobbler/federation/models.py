@@ -41,6 +41,9 @@ class FederationSettings(db.Model):
     indexable: Mapped[bool] = mapped_column(Boolean, default=False)
     display_name: Mapped[str | None] = mapped_column(String(100))
     bio: Mapped[str | None] = mapped_column(Text)
+    # Offer the user's profile image to other servers (as the actor's icon) and on the
+    # public profile page. Off until they say so.
+    share_avatar: Mapped[bool] = mapped_column(Boolean, default=False)
     # An IANA zone name (validated with zoneinfo), used to decide when a Monday starts.
     timezone: Mapped[str] = mapped_column(String(64), default="UTC")
     post_weekly_summary: Mapped[bool] = mapped_column(Boolean, default=True)
