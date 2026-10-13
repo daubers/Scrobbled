@@ -1,6 +1,7 @@
 // Shared page shell: site header, navigation, sign-in guard.
 
 import { api, getToken, redirectToLogin, setToken } from "./api.js";
+import { avatarImage } from "./avatar.js";
 import { h, replace } from "./dom.js";
 
 const NAV = [
@@ -26,7 +27,12 @@ export async function signedInPage(active) {
     h(
       "div",
       { class: "account" },
-      h("span", { class: "account-name" }, user.username),
+      h(
+        "a",
+        { class: "account-link", href: "account.html", title: "Your profile image" },
+        h("span", { class: "account-avatar" }, avatarImage(user, "avatar-sm")),
+        h("span", { class: "account-name" }, user.username),
+      ),
       h("button", { type: "button", class: "link-button", onclick: signOut }, "Sign out"),
     ),
   );

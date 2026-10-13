@@ -28,8 +28,17 @@ class User(db.Model):
     email: Mapped[str] = mapped_column(String(255))
     password_hash: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # The profile image: none, upload or gravatar. Any image's bytes sit on disk (see
+    # services/avatars.py); these columns just say whether there is one, and what it is.
+    avatar_source: Mapped[str] = mapped_column(String(16), default="none", server_default="none")
+    avatar_content_type: Mapped[str | None] = mapped_column(String(32))
+    avatar_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (Index("uq_users_username_lower", func.lower(username), unique=True),)
+
+    @property
+    def has_avatar(self) -> bool:
+        return self.avatar_source != "none"
 
 
 class ApiApp(db.Model):

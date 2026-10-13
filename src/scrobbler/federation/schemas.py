@@ -55,6 +55,14 @@ class SharingSettingsSchema(Schema):
             )
         },
     )
+    share_avatar = fields.Boolean(
+        metadata={
+            "description": (
+                "Show your profile image on your public profile and send it to other "
+                "servers as your picture. Off by default; has no effect if you have no image."
+            )
+        }
+    )
     handle = fields.String(dump_only=True, metadata={"example": "@alice@scrobble.example"})
     actor_url = fields.String(dump_only=True)
     profile_url = fields.String(dump_only=True)
@@ -70,6 +78,9 @@ class PublicProfileSchema(Schema):
     bio = fields.String(allow_none=True)
     now_playing = fields.String(
         allow_none=True, metadata={"description": '"Track by Artist", or null'}
+    )
+    has_avatar = fields.Boolean(
+        metadata={"description": "Whether there's a profile image at `/profiles/{username}/avatar`"}
     )
     handle = fields.String(metadata={"example": "@alice@scrobble.example"})
     actor_url = fields.String()

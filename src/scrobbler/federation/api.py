@@ -178,8 +178,26 @@ def public_profile(username):
         "now_playing": actors.now_playing_text(user)
         if settings.now_playing_mode != "off"
         else None,
+        "has_avatar": settings.share_avatar and user.has_avatar,
         **{k: v for k, v in _identity(user.username).items() if k != "profile_url"},
     }
+
+
+@blp.route("/profiles/<string:username>/avatar", methods=["GET"])
+@blp.response(200, content_type="image/jpeg", description="The profile image (JPEG, PNG or WebP)")
+@blp.alt_response(404, schema=ErrorSchema, description="No image shared under that name")
+def public_avatar(username):
+    """A public profile image
+
+    For the web UI's profile page. Only served when the user shares and has chosen to
+    share their image.
+    """
+    found = sharing.shared_avatar(username)
+    if found is None:
+        fed_metrics.lookups_total.labels(kind="avatar", result="not_found").inc()
+        abort(404, code="not_found", message="No shared profile image under that name.")
+    fed_metrics.lookups_total.labels(kind="avatar", result="found").inc()
+    return sharing.avatar_response(*found)
 
 
 @blp.route("/profiles/<string:username>/posts/<string:post_uuid>", methods=["GET"])

@@ -1,4 +1,5 @@
 import { api } from "./api.js";
+import { avatarImage } from "./avatar.js";
 import { errorBox, h, replace } from "./dom.js";
 import { publicPage } from "./layout.js";
 
@@ -22,6 +23,9 @@ try {
   });
   replace(
     root,
+    profile.has_avatar
+      ? avatarImage(profile, "avatar-xl", `/federation/profiles/${encodeURIComponent(username)}/avatar`)
+      : null,
     h("h1", {}, profile.display_name),
     h("div", { class: "approve-app handle" }, profile.handle),
     profile.bio ? h("p", { class: "lede profile-bio" }, profile.bio) : null,

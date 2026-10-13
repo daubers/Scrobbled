@@ -1921,6 +1921,225 @@
         ]
       }
     },
+    "/api/v1/me/avatar": {
+      "get": {
+        "responses": {
+          "404": {
+            "description": "You have no profile image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Your profile image (JPEG, PNG or WebP)"
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Your profile image",
+        "tags": [
+          "Avatar"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_CONTENT"
+          },
+          "415": {
+            "description": "Not a JPEG, PNG or WebP image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Image too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/AvatarUpload"
+              }
+            }
+          }
+        },
+        "summary": "Upload a profile image",
+        "description": "Replaces your current one, whatever its source.",
+        "tags": [
+          "Avatar"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "responses": {
+          "404": {
+            "description": "You have no profile image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Remove your profile image",
+        "tags": [
+          "Avatar"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/avatar/gravatar": {
+      "post": {
+        "responses": {
+          "502": {
+            "description": "Gravatar couldn't be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Gravatar is off, or has no image for you",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Use your Gravatar as your profile image",
+        "description": "The server fetches the image for your account email from Gravatar (sending it a hash\nof the address) and keeps a copy. Call again to refresh it. Only available when the\nserver's admin has enabled it; see `gravatar_enabled` on `/auth/me`.",
+        "tags": [
+          "Avatar"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/healthz": {
       "get": {
         "responses": {
@@ -2721,6 +2940,44 @@
         }
       ]
     },
+    "/api/v1/federation/profiles/{username}/avatar": {
+      "get": {
+        "responses": {
+          "404": {
+            "description": "No image shared under that name",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The profile image (JPEG, PNG or WebP)"
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "A public profile image",
+        "description": "For the web UI's profile page. Only served when the user shares and has chosen to\nshare their image.",
+        "tags": [
+          "Federation"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
     "/api/v1/federation/profiles/{username}/posts/{post_uuid}": {
       "get": {
         "responses": {
@@ -3435,6 +3692,53 @@
         }
       ]
     },
+    "/users/{username}/avatar": {
+      "get": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "Profile image",
+        "description": "The user's profile image, which their actor document names as its `icon`. Only served when the user shares and has chosen to share their image.",
+        "operationId": "federation_actor_avatar",
+        "responses": {
+          "200": {
+            "description": "A JPEG, PNG or WebP image",
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, or not sharing (the two are indistinguishable)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
     "/users/{username}/followers": {
       "get": {
         "tags": [
@@ -3797,6 +4101,10 @@
       "description": "Album art, resolved from MusicBrainz / Cover Art Archive by a background worker. You can also upload your own art, or correct a failed lookup; those only change what you see."
     },
     {
+      "name": "Avatar",
+      "description": "Your profile image: upload one, use your Gravatar (if this server allows it), or remove it."
+    },
+    {
       "name": "Health",
       "description": "Liveness for load balancers and containers"
     },
@@ -3931,6 +4239,35 @@
             "type": "string",
             "format": "date-time",
             "readOnly": true
+          },
+          "has_avatar": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "Whether you have a profile image"
+          },
+          "avatar_source": {
+            "type": "string",
+            "enum": [
+              "none",
+              "upload",
+              "gravatar"
+            ],
+            "readOnly": true,
+            "description": "Where your profile image comes from"
+          },
+          "avatar_updated_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "readOnly": true,
+            "description": "When it last changed"
+          },
+          "gravatar_enabled": {
+            "readOnly": true,
+            "type": "boolean",
+            "description": "Whether this server offers Gravatar"
           }
         },
         "additionalProperties": false
@@ -4654,6 +4991,20 @@
         },
         "additionalProperties": false
       },
+      "AvatarUpload": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "description": "A JPEG, PNG or WebP image",
+            "type": "string",
+            "format": "binary"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "additionalProperties": false
+      },
       "Health": {
         "type": "object",
         "properties": {
@@ -5260,6 +5611,10 @@
             ],
             "description": "`off` (default): nothing. `profile`: a \"Now playing\" field on your profile, refreshed at most every 5 minutes and cleared when you stop. `posts`: the profile field, plus a post for each track played 30+ seconds, at most one every 30 minutes, replacing the last one."
           },
+          "share_avatar": {
+            "type": "boolean",
+            "description": "Show your profile image on your public profile and send it to other servers as your picture. Off by default; has no effect if you have no image."
+          },
           "handle": {
             "type": "string",
             "readOnly": true,
@@ -5348,6 +5703,10 @@
               "posts"
             ],
             "description": "`off` (default): nothing. `profile`: a \"Now playing\" field on your profile, refreshed at most every 5 minutes and cleared when you stop. `posts`: the profile field, plus a post for each track played 30+ seconds, at most one every 30 minutes, replacing the last one."
+          },
+          "share_avatar": {
+            "type": "boolean",
+            "description": "Show your profile image on your public profile and send it to other servers as your picture. Off by default; has no effect if you have no image."
           },
           "handle": {
             "type": "string",
@@ -5438,6 +5797,10 @@
               "null"
             ],
             "description": "\"Track by Artist\", or null"
+          },
+          "has_avatar": {
+            "type": "boolean",
+            "description": "Whether there's a profile image at `/profiles/{username}/avatar`"
           },
           "handle": {
             "type": "string",

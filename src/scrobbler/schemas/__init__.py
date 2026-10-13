@@ -1,6 +1,7 @@
 """Marshmallow schemas for the /api/v1 JSON API. They drive both request
 validation and the generated OpenAPI document."""
 
+from flask import current_app
 from flask_smorest.fields import Upload
 from marshmallow import Schema, ValidationError, fields, validate, validates_schema
 
@@ -20,6 +21,24 @@ class UserSchema(Schema):
     username = fields.String(dump_only=True, metadata={"example": "alice"})
     email = fields.String(dump_only=True, metadata={"example": "alice@example.com"})
     created_at = fields.DateTime(dump_only=True)
+    has_avatar = fields.Boolean(
+        dump_only=True, metadata={"description": "Whether you have a profile image"}
+    )
+    avatar_source = fields.String(
+        dump_only=True,
+        validate=validate.OneOf(["none", "upload", "gravatar"]),
+        metadata={"description": "Where your profile image comes from"},
+    )
+    avatar_updated_at = fields.DateTime(
+        dump_only=True, allow_none=True, metadata={"description": "When it last changed"}
+    )
+    gravatar_enabled = fields.Method(
+        "_gravatar_enabled",
+        metadata={"type": "boolean", "description": "Whether this server offers Gravatar"},
+    )
+
+    def _gravatar_enabled(self, _user) -> bool:
+        return bool(current_app.config["AVATAR_GRAVATAR_ENABLED"])
 
 
 class RegisterSchema(Schema):
@@ -161,6 +180,10 @@ class AlbumArtArgsSchema(Schema):
 
 
 class AlbumArtUploadSchema(Schema):
+    file = Upload(required=True, metadata={"description": "A JPEG, PNG or WebP image"})
+
+
+class AvatarUploadSchema(Schema):
     file = Upload(required=True, metadata={"description": "A JPEG, PNG or WebP image"})
 
 

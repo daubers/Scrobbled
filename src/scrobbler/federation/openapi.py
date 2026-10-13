@@ -130,6 +130,20 @@ _OPERATIONS = {
             "404": {"description": "Not found, not listed, or deleted"},
         },
     ),
+    "federation.actor_avatar": (
+        "get",
+        "Profile image",
+        "The user's profile image, which their actor document names as its `icon`. Only "
+        "served when the user shares and has chosen to share their image.",
+        [_USERNAME],
+        {
+            "200": {
+                "description": "A JPEG, PNG or WebP image",
+                "content": {"image/*": {"schema": {"type": "string", "format": "binary"}}},
+            },
+            "404": _NOT_FOUND,
+        },
+    ),
     "federation.followers": (
         "get",
         "Followers",
