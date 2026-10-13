@@ -6,14 +6,14 @@ import { signedInPage } from "./layout.js";
 const root = document.getElementById("avatar-panel");
 const messages = document.getElementById("messages");
 
-let user = await signedInPage("account.html");
-render();
-
 const SOURCES = {
   upload: "An image you uploaded.",
   gravatar: "Your Gravatar, copied to this server.",
   none: "You haven't set a profile image yet.",
 };
+
+let user = await signedInPage("account.html");
+render();
 
 function say(notice) {
   replace(messages, notice);
