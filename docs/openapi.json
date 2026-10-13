@@ -3692,6 +3692,53 @@
         }
       ]
     },
+    "/users/{username}/avatar": {
+      "get": {
+        "tags": [
+          "ActivityPub"
+        ],
+        "summary": "Profile image",
+        "description": "The user's profile image, which their actor document names as its `icon`. Only served when the user shares and has chosen to share their image.",
+        "operationId": "federation_actor_avatar",
+        "responses": {
+          "200": {
+            "description": "A JPEG, PNG or WebP image",
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, or not sharing (the two are indistinguishable)"
+          }
+        },
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
     "/users/{username}/followers": {
       "get": {
         "tags": [
