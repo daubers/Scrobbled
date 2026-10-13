@@ -6,7 +6,8 @@ instance rather than using one, see the [admin guide](admin-guide.md) instead.
 
 ## Getting started
 
-Register in the web UI, then go to **Apps** and create one app per player or scrobbler
+Register in the web UI, then open the account menu at the top right (your picture and
+name), go to **Apps** and create one app per player or scrobbler
 client you use — each gets its own API key and shared secret, and can be revoked on its
 own from the **Sessions** page without affecting the others. If a friend runs your
 instance, ask them for its address; that's the only thing you need from them to get
@@ -47,7 +48,7 @@ scrobbler is one example; look for a plugin or a different player with 2.0 suppo
 
 ## Importing history
 
-Open **Import** in the web UI:
+Open **Import** from the account menu:
 
 - **An export file**:
   - CSV from [lastfm-to-csv](https://benjaminbenben.com/lastfm-to-csv/), no header row,
@@ -67,8 +68,8 @@ skipped, so importing the same export again, or importing overlapping exports, i
 
 ## Your profile image
 
-Click your name in the page header to open **Profile**, where you can give yourself a
-picture, shown next to your name. Upload a JPEG, PNG or WebP image, or remove it again.
+Open the account menu at the top right (your picture and name) and choose **Profile**, where
+you can give yourself a picture, shown next to your name. Upload a JPEG, PNG or WebP image, or remove it again.
 
 If your instance's admin has allowed it, you can also **use your Gravatar**. The server
 asks Gravatar for the picture linked to your account email, sending it a hash of that
@@ -84,7 +85,7 @@ removal can take a while to show up everywhere.
 ## Sharing on the fediverse
 
 Only available if your instance's admin has turned this on — ask them, or check whether
-**Sharing** appears in the navigation. Turn it on there, and you're findable as
+**Sharing** appears in the account menu. Turn it on there, and you're findable as
 `@name@<your instance's host>` from Mastodon and other fediverse apps.
 
 - Follows are accepted automatically, or wait for your approval if you turn that on

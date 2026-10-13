@@ -33,7 +33,7 @@ cp .env.example .env                      # then set SECRET_KEY and POSTGRES_PAS
 docker compose up -d                      # db, api (:5050), worker, ui (:8080)
 ```
 
-Open http://localhost:8080, create an account, then go to **Apps** and create an app for
+Open http://localhost:8080, create an account, then open **Apps** from the account menu (top right) and create an app for
 a player. See [docs/admin-guide.md](docs/admin-guide.md) for the published images, full
 configuration reference and production notes.
 

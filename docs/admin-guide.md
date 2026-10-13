@@ -35,7 +35,7 @@ cp .env.example .env   # then set SECRET_KEY and POSTGRES_PASSWORD
 SCROBBLER_IMAGE_TAG=main docker compose up -d --no-build   # or drop --no-build to build locally
 ```
 
-Open `http://localhost:8080`, create an account, then go to **Apps** and create an app
+Open `http://localhost:8080`, create an account, then open **Apps** from the account menu (top right) and create an app
 for each player. Add `--profile monitoring` for Prometheus and Grafana.
 
 Published images: `pkgs.daubney.dev/scrobbler/scrobbler-api` and

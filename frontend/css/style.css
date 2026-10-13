@@ -206,23 +206,91 @@ code {
 }
 
 .account {
+  position: relative; /* anchors the menu */
   margin-left: auto;
-  display: flex;
-  gap: 1rem;
-  align-items: center;
   color: var(--ink-soft);
 }
 
-.account-link {
+.account-trigger {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
   color: inherit;
-  text-decoration: none;
+  font: inherit;
+  cursor: pointer;
 }
 
-.account-link:hover .account-name {
+.account-trigger:hover,
+.account-trigger[aria-expanded="true"] {
   color: var(--ink);
+  border-color: var(--rule);
+  background: var(--paper-raised);
+}
+
+.account-trigger[data-current] .account-name {
+  color: var(--ink);
+}
+
+/* A three-line "hamburger" icon, drawn with two borders and a shadow-free centre bar */
+.account-icon {
+  width: 1rem;
+  height: 0.7rem;
+  border-block: 2px solid currentColor;
+  background: linear-gradient(currentColor, currentColor) center / 100% 2px no-repeat;
+}
+
+.account-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 10;
+  min-width: 12rem;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+}
+
+.account-menu[hidden] {
+  display: none;
+}
+
+.account-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 0;
+  border-radius: calc(var(--radius-control) - 2px);
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.account-menu-item:hover,
+.account-menu-item:focus-visible {
+  color: var(--ink);
+  background: var(--bar);
+}
+
+.account-menu-item[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.account-menu-end {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--rule);
 }
 
 .account-avatar {
@@ -864,9 +932,13 @@ input {
     margin-inline: -8px;
   }
 
-  .account {
-    margin-left: 0;
-    width: 100%;
+  /* Just the picture and the icon; the name is still the button's accessible label */
+  .account-name {
+    display: none;
+  }
+
+  .account-menu {
+    min-width: min(16rem, calc(100vw - 32px));
   }
 
   .keys,
