@@ -29,6 +29,8 @@ async function change(action, done) {
     say(h("p", { class: "notice notice-ok" }, done));
   } catch (error) {
     say(errorBox(describeError(error)));
+    // The change may have half-happened, or the page was out of date: show what's true now.
+    user = await api("/auth/me").catch(() => user);
   }
   render();
   const slot = document.querySelector(".account-avatar");
